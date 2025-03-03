@@ -1,0 +1,19 @@
+[project]
+name = "deep-paper"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "bibtexparser>=1.4.3",
+    "fastapi[standard]>=0.115.11",
+    "langchain>=0.3.19",
+    "langchain-community>=0.3.18",
+    "langchain-text-splitters>=0.3.6",
+    "litellm>=1.61.20",
+    "pylatexenc>=2.10",
+    "rank-bm25>=0.2.2",
+    "requests>=2.32.3",
+    "smolagents[transformers]>=1.9.2",
+    "sse-starlette>=2.2.1",
+]

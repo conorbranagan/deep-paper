@@ -1,0 +1,9 @@
+import Researcher from '@/components/Researcher';
+
+export default function Home() {
+  return (
+    <main className="min-h-screen bg-gray-50">
+      <Researcher />
+    </main>
+  );
+}
