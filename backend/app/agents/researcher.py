@@ -56,15 +56,22 @@ class PaperRetriever(Tool):
 
 
 prompt_tpl = """
-You are researching the paper at this URL: {url}
+You are researching the paper:
+
+- Arxiv ID: {paper.arxiv_id}
+- Title: {paper.title}
+- Abstract: {paper.abstract}
 
 When you are asked to reference other papers cited, you should be sure to fetch or query those papers as well to ensure you have the full context.
+
+Please use your available to tools to answer the following prompt.
 
 {prompt}
 """
 
 
 def run(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
+    paper = Paper.from_url(url)
     agent = CodeAgent(
         tools=[
             PaperRetriever(),
@@ -75,7 +82,7 @@ def run(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     )
 
     system_prompt = prompt_tpl.format(
-        url=url,
+        paper=paper,
         prompt=prompt,
     )
 
