@@ -1,0 +1,20 @@
+{
+    "version": 2,
+    "projects": {
+      "backend": {
+        "dockerfile": "./backend.Dockerfile",
+        "name": "backend",
+        "envs": [
+          "PORT=8000"
+        ]
+      },
+      "frontend": {
+        "dockerfile": "./frontend.Dockerfile",
+        "name": "frontend",
+        "envs": [
+          "PORT=3000",
+          "NEXT_PUBLIC_API_URL=${{RAILWAY_URL_BACKEND}}"
+        ]
+      }
+    }
+  }
