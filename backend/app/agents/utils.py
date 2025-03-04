@@ -1,4 +1,5 @@
 from smolagents import ActionStep, PlanningStep, TaskStep, SystemPromptStep, AgentText
+import json
 
 def step_as_json(step) -> dict:
     if isinstance(step, ActionStep):
@@ -25,6 +26,11 @@ def step_as_json(step) -> dict:
         return {
             "type": "agent-answer",
             "content": step.to_string(),
+        }
+    elif isinstance(step, (dict, list)):
+        return {
+            "type": "agent-answer",
+            "content": json.dumps(step),
         }
     else:
         print("Unknown step type", type(step))
