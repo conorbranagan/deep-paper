@@ -1,0 +1,9 @@
+[build]
+builder = "nixpacks"
+
+[build.nixpacksPlan]
+providers = ["python"]
+
+[deploy]
+startCommand = "fastapi run"
+restartPolicyType = "on_failure"
