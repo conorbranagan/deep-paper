@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import ResearchStream from './ResearchStream';
 import QuestionInput from './QuestionInput';
 
@@ -12,7 +11,6 @@ export default function PaperResearch() {
   const [streamData, setStreamData] = useState<Array<{type: string, content: string}>>([]);
   const [error, setError] = useState('');
   const streamEndRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
 
   // Scroll to bottom when new data arrives
   useEffect(() => {
@@ -73,7 +71,7 @@ export default function PaperResearch() {
         }
       };
       
-      eventSource.onerror = (e) => {
+      eventSource.onerror = () => {
         eventSource.close();
         setIsLoading(false);
       };

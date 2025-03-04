@@ -259,7 +259,7 @@ wheels = [
 ]
 
 [[package]]
-name = "deep-paper"
+name = "deep_paper"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
