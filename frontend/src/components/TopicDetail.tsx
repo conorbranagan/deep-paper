@@ -21,9 +21,10 @@ interface Topic {
 interface TopicDetailProps {
   topic: Topic;
   paperUrl?: string;
+  model: string;
 }
 
-const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl }) => {
+const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model }) => {
   const [topicContent, setTopicContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
@@ -79,7 +80,7 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl }) => {
       // Your EventSource setup code
       const encodedUrl = encodeURIComponent(paperUrl);
       const encodedTopic = encodeURIComponent(topic.topic);
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/research/summarize/topic?url=${encodedUrl}&topic=${encodedTopic}`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/research/summarize/topic?url=${encodedUrl}&topic=${encodedTopic}&model=${model}`;
       eventSource = new EventSource(apiUrl);
       loadTopicSummary(eventSource);
     }
@@ -90,7 +91,7 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl }) => {
         eventSource.close();
       }
     };
-  }, [paperUrl, topic, loadTopicSummary]);
+  }, [paperUrl, topic, model, loadTopicSummary]);
 
   if (!topic) {
     return <p>No topic selected.</p>;
@@ -156,31 +157,6 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl }) => {
         ) : (
           <p className="text-gray-500">No further reading available for this topic.</p>
         )}
-      </div>
-
-      {/* Placeholder for future features */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="bg-gray-50">
-          <CardContent className="pt-6">
-            <h3 className="text-lg font-semibold mb-2">Related Papers</h3>
-            <p className="text-gray-500 text-sm">Explore papers related to this topic.</p>
-            <button className="mt-3 text-blue-600 text-sm disabled:opacity-50" disabled>
-              Coming soon →
-            </button>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gray-50">
-          <CardContent className="pt-6">
-            <h3 className="text-lg font-semibold mb-2">Save Insights</h3>
-            <p className="text-gray-500 text-sm">
-              Save highlights and notes about this topic.
-            </p>
-            <button className="mt-3 text-blue-600 text-sm disabled:opacity-50" disabled>
-              Coming soon →
-            </button>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

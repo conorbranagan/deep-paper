@@ -8,6 +8,13 @@ import ResearchStream from './ResearchStream';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import MarkdownRenderer from './ui/markdown';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 
 interface Topic {
   topic: string;
@@ -31,6 +38,18 @@ interface ResearchStreamData {
   content: string;
 }
 
+interface ModelOption {
+  id: string;
+  name: string;
+}
+
+// Model configuration
+const modelOptions: ModelOption[] = [
+  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
+  { id: 'anthropic/claude-3-7-sonnet-latest', name: 'Claude 3.7 Sonnet' },
+  { id: 'openai/gpt-4o', name: 'GPT-4o' },
+];
+
 export default function Researcher() {
   const [url, setUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -39,6 +58,7 @@ export default function Researcher() {
   const [error, setError] = useState<string>('');
   const [showAbstract, setShowAbstract] = useState<boolean>(false);
   const paperContentRef = useRef<HTMLDivElement>(null);
+  const [selectedModel, setSelectedModel] = useState<string>(modelOptions[0].id);
 
   // New states for research question functionality
   const [isResearching, setIsResearching] = useState<boolean>(false);
@@ -53,6 +73,27 @@ export default function Researcher() {
 
   const validateUrl = (url: string): boolean => {
     return url.startsWith('https://arxiv.org/abs')
+  };
+  
+  // Helper function for API calls
+  const callApi = async (endpoint: string, params: Record<string, string>) => {
+    // Add model to params
+    const allParams = { ...params, model: selectedModel };
+    
+    // Convert params to URL search params
+    const searchParams = new URLSearchParams();
+    Object.entries(allParams).forEach(([key, value]) => {
+      searchParams.append(key, value);
+    });
+    
+    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/${endpoint}?${searchParams.toString()}`;
+    
+    return fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,13 +112,8 @@ export default function Researcher() {
     setResearchStream([]);
 
     try {
-      // Call summarize endpoint
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/research/summarize?url=${encodeURIComponent(url)}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
+      // Call summarize endpoint using helper function
+      const response = await callApi('research/summarize', { url });
 
       if (!response.ok) {
         throw new Error('Failed to summarize paper');
@@ -117,7 +153,14 @@ export default function Researcher() {
     setResearchStream([]);
 
     try {
-      const deepURL = `${process.env.NEXT_PUBLIC_API_URL}/api/research/deep?url=${encodeURIComponent(url)}&question=${encodeURIComponent(questionText)}`
+      // Using search params to properly encode URL parameters including the model
+      const searchParams = new URLSearchParams({
+        url: url,
+        question: questionText,
+        model: selectedModel
+      });
+      
+      const deepURL = `${process.env.NEXT_PUBLIC_API_URL}/api/research/deep?${searchParams.toString()}`;
       const eventSource = new EventSource(deepURL);
 
       eventSource.onmessage = (event) => {
@@ -171,7 +214,23 @@ export default function Researcher() {
             className="flex-grow px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={isLoading}
           />
-          <button
+          <Select
+            value={selectedModel}
+            onValueChange={setSelectedModel}
+            disabled={isLoading}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select model" />
+            </SelectTrigger>
+            <SelectContent>
+              {modelOptions.map((model) => (
+                <SelectItem key={model.id} value={model.id}>
+                  {model.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
             type="submit"
             disabled={isLoading}
             className={`px-6 py-2 rounded font-medium ${isLoading
@@ -180,7 +239,7 @@ export default function Researcher() {
               }`}
           >
             {isLoading ? 'Processing...' : 'Research'}
-          </button>
+          </Button>
         </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
       </form>
@@ -192,7 +251,7 @@ export default function Researcher() {
             <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
             <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
           </div>
-          <div className="ml-4">Analyzing paper...</div>
+          <div className="ml-4">Analyzing paper with {modelOptions.find(m => m.id === selectedModel)?.name}...</div>
         </div>
       )}
 
@@ -245,7 +304,7 @@ export default function Researcher() {
                 </Button>
                 <h2 className="text-2xl font-bold">{selectedTopic.topic}</h2>
               </div>
-              <TopicDetail topic={selectedTopic} paperUrl={url} />
+              <TopicDetail topic={selectedTopic} paperUrl={url} model={selectedModel} />
             </div>
           )}
 
@@ -272,12 +331,10 @@ export default function Researcher() {
                   <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
                   <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
                 </div>
-                <div className="ml-3 text-sm text-gray-600">Researching your question...</div>
+                <div className="ml-3 text-sm text-gray-600">Researching your question with {modelOptions.find(m => m.id === selectedModel)?.name}...</div>
               </div>
             )}
-
           </div>
-
         </div>
       )}
     </div>

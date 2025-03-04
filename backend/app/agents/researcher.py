@@ -58,6 +58,8 @@ class PaperRetriever(Tool):
 prompt_tpl = """
 You are researching the paper at this URL: {url}
 
+When you are asked to reference other papers cited, you should be sure to fetch or query those papers as well to ensure you have the full context.
+
 {prompt}
 """
 
