@@ -93,7 +93,9 @@ export default function ResearchStream({ data }: ResearchStreamProps) {
               <span className="font-medium">{label}</span>
             </div>
             <div className="prose max-w-none">
-              <MarkdownRenderer>{item.content}</MarkdownRenderer>
+              <MarkdownRenderer containerStyle={{
+                "overflow": "scroll"
+              }}>{item.content}</MarkdownRenderer>
             </div>
           </div>
         );
