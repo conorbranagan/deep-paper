@@ -30,6 +30,7 @@ class InvalidPaperURL(Exception):
 
 
 class Citation(BaseModel):
+    id: Optional[str] = None
     title: str
     author: str
     year: Optional[int] = None
@@ -78,7 +79,6 @@ class Paper(BaseModel):
         all_latex = "\n".join(f.latex for f in latex_files)
         meta = parse_latex_metadata(all_latex, latex_files)
 
-        print(meta)
         return Paper(
             arxiv_id=arxiv_id,
             title=meta.title,
@@ -190,6 +190,7 @@ def fetch_citations(arxiv_id: int) -> list[Citation]:
         entries = bibtexparser.loads(bib_content, parser).entries
         return [
             Citation(
+                id=entry.get("ID"),
                 title=entry.get("title"),
                 author=entry.get("author"),
                 year=entry.get("year"),

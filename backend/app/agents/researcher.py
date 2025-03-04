@@ -54,6 +54,39 @@ class PaperRetriever(Tool):
             ]
         )
 
+class CitationRetriever(Tool):
+    name = "citation_retriever"
+    description = "Retrieve details of a citation by arxiv id and one or more citation ids. You must have both! Returns the title, author and url"
+    inputs = {
+        "arxiv_id": {
+            "type": "string",
+            "required": True,
+            "description": "ID of the arxiv paper, example is '2307.09288'",
+        },
+        "citation_ids": {
+            "type": "array",
+            "required": True,
+            "description": "ID of the citation, these will appear as \\cite{<citation_id>} in the content. Just provide the <citation_id> values as an array.",
+        },
+    }
+    output_type = "string"
+
+    def forward(self, arxiv_id: str, citation_ids: list[str]) -> str:
+        if arxiv_id == "" or len(citation_ids) == 0:
+            return f"Must provide both arxiv and citation ids"
+        try:
+            paper = Paper.from_arxvid_id(arxiv_id)
+        except PaperNotFound:
+            return f"Unable to find paper for Arxiv ID {arxiv_id}"
+
+        matching = [c for c in paper.citations if c.id in citation_ids]
+        if len(matching) == 0:
+            return f"Unable to find citations for Arxiv ID {arxiv_id} and IDs {citation_ids}"
+
+        resp = ""
+        for match in matching:
+            resp += f"\n==== Citation Details ====\nID: {match.id}\nTitle: {match.title}\nAuthor: {match.author}\nYear: {match.year}\nURL: {match.url or "None"}"
+        return resp
 
 prompt_tpl = """
 You are researching the paper:
@@ -75,6 +108,7 @@ def run(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     agent = CodeAgent(
         tools=[
             PaperRetriever(),
+            CitationRetriever(),
         ],
         model=model,
         max_steps=3,
@@ -86,7 +120,7 @@ def run(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
         prompt=prompt,
     )
 
-    return agent.run(system_prompt, stream=stream)    
+    return agent.run(system_prompt, stream=stream)
 
 
 if __name__ == "__main__":
@@ -125,6 +159,4 @@ if __name__ == "__main__":
     else:
         raise Exception(f"unknown model: {args.model}")
 
-    Paper.from_arxvid_id("2206.05802")
-
-    run(args.url, args.prompt, model, stream=False, verbosity_level=LogLevel.DEBUG)
+    run(args.url, args.prompt, model, stream=False, verbosity_level=LogLevel.INFO)
