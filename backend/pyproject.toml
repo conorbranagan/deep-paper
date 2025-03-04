@@ -1,5 +1,5 @@
 [project]
-name = "deep-paper"
+name = "deep_paper"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
