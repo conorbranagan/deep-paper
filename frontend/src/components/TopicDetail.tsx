@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from './ui/card';
 import { ExternalLink } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from './ui/markdown';
 
 interface FurtherReading {
   title: string;
@@ -114,7 +114,7 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl }) => {
           {error && <p className="text-red-500 mb-4">{error}</p>}
 
           <div className="prose max-w-none">
-            <ReactMarkdown>{topicContent}</ReactMarkdown>
+            <MarkdownRenderer>{topicContent}</MarkdownRenderer>
 
 
             {isLoading && topicContent.length > 0 && (

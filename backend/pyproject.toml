@@ -17,3 +17,8 @@ dependencies = [
     "smolagents[transformers]>=1.9.2",
     "sse-starlette>=2.2.1",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.9.9",
+]

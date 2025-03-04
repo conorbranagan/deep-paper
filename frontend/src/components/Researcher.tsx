@@ -4,10 +4,10 @@ import { useState, useRef, useEffect } from 'react';
 import QuestionInput from './QuestionInput';
 import TopicList from './TopicList';
 import TopicDetail from './TopicDetail';
+import ResearchStream from './ResearchStream';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from './ui/markdown';
 
 interface Topic {
   topic: string;
@@ -26,6 +26,11 @@ interface PaperData {
   topics: Topic[];
 }
 
+interface ResearchStreamData {
+  type: string;
+  content: string;
+}
+
 export default function Researcher() {
   const [url, setUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -34,6 +39,10 @@ export default function Researcher() {
   const [error, setError] = useState<string>('');
   const [showAbstract, setShowAbstract] = useState<boolean>(false);
   const paperContentRef = useRef<HTMLDivElement>(null);
+
+  // New states for research question functionality
+  const [isResearching, setIsResearching] = useState<boolean>(false);
+  const [researchStream, setResearchStream] = useState<ResearchStreamData[]>([]);
 
   // Scroll to paper content when loaded
   useEffect(() => {
@@ -59,6 +68,7 @@ export default function Researcher() {
     setPaperData(null);
     setSelectedTopic(null);
     setShowAbstract(false);
+    setResearchStream([]);
 
     try {
       // Call summarize endpoint
@@ -95,6 +105,58 @@ export default function Researcher() {
     setShowAbstract(!showAbstract);
   };
 
+  // New function to handle research question submission
+  const handleQuestionSubmit = async (questionText: string) => {
+    if (!url || !questionText.trim()) {
+      setError('Please enter both a valid URL and a research question');
+      return;
+    }
+
+    setError('');
+    setIsResearching(true);
+    setResearchStream([]);
+
+    try {
+      const deepURL = `${process.env.NEXT_PUBLIC_API_URL}/api/research/deep?url=${encodeURIComponent(url)}&question=${encodeURIComponent(questionText)}`
+      const eventSource = new EventSource(deepURL);
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === 'complete') {
+            eventSource.close();
+            setIsResearching(false);
+          } else if (data.type === 'error') {
+            throw new Error(data.content || 'An error occurred');
+          } else {
+            setResearchStream(prev => [...prev, data]);
+          }
+        } catch (error) {
+          console.error('Error parsing stream data:', error);
+          setError('Failed to research');
+          eventSource.close();
+          setIsResearching(false);
+        }
+      };
+
+      eventSource.onerror = () => {
+        eventSource.close();
+        setIsResearching(false);
+      };
+    } catch (error) {
+      console.error('Deep research error:', error);
+      setResearchStream(prev => [
+        ...prev,
+        {
+          type: 'error',
+          content: 'Failed to process your research question. Please try again.'
+        }
+      ]);
+      setIsResearching(false);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">Paper Research Assistant</h1>
@@ -113,8 +175,8 @@ export default function Researcher() {
             type="submit"
             disabled={isLoading}
             className={`px-6 py-2 rounded font-medium ${isLoading
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
               }`}
           >
             {isLoading ? 'Processing...' : 'Research'}
@@ -141,9 +203,9 @@ export default function Researcher() {
           <Card>
             <CardContent className="pt-6">
               <h2 className="text-2xl font-bold mb-4">Summary</h2>
-              <ReactMarkdown components={{ ul: ({ ...props }) => (<ul style={{ display: "block", listStyleType: "disc", paddingInlineStart: "40px", }} {...props} />), ol: ({ ...props }) => (<ul style={{ display: "block", listStyleType: "decimal", paddingInlineStart: "40px", }} {...props} />), }}>
+              <MarkdownRenderer>
                 {paperData.summary}
-              </ReactMarkdown>
+              </MarkdownRenderer>
 
               <div className="mt-6 ">
                 <div
@@ -188,61 +250,34 @@ export default function Researcher() {
           )}
 
 
-          {/* Question Input - could be used later for asking questions about the paper */}
+          {/* Question Input - now connected to handleQuestionSubmit */}
           <h2 className="text-2xl font-bold mb-4">❓ Research Further</h2>
           <div className="mb-6">
             <QuestionInput
-              onSubmit={() => { }}
-              disabled={!paperData || isLoading}
-              placeholder="Input question here..."
+              onSubmit={handleQuestionSubmit}
+              disabled={!paperData || isLoading || isResearching}
+              placeholder="Ask a research question about this paper..."
             />
+            {researchStream.length > 0 && (
+              <Card className="mt-6">
+                <CardContent className="pt-6">
+                  <ResearchStream data={researchStream} />
+                </CardContent>
+              </Card>
+            )}
+            {isResearching && (
+              <div className="mt-3 flex items-center">
+                <div className="animate-pulse flex space-x-2">
+                  <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
+                  <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
+                  <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
+                </div>
+                <div className="ml-3 text-sm text-gray-600">Researching your question...</div>
+              </div>
+            )}
+
           </div>
 
-          {/* Future Feature Areas - Stubbed UI */}
-          <Tabs defaultValue="current" className="mt-8">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="current">Current Paper</TabsTrigger>
-              <TabsTrigger value="related">Related Papers</TabsTrigger>
-              <TabsTrigger value="explore">Deep Exploration</TabsTrigger>
-              <TabsTrigger value="saved">Saved Items</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="current" className="mt-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-xl font-semibold mb-3">Full Paper Content</h3>
-                  <p className="text-gray-500">Full paper contents will be available here.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="related" className="mt-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-xl font-semibold mb-3">Related Papers</h3>
-                  <p className="text-gray-500">Related papers for the current topic will be displayed here.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="explore" className="mt-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-xl font-semibold mb-3">Topic Deep Dive</h3>
-                  <p className="text-gray-500">Explore the current paper in depth with a focus on the selected topic.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="saved" className="mt-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-xl font-semibold mb-3">Saved Highlights</h3>
-                  <p className="text-gray-500">Your saved highlights and papers will appear here.</p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
         </div>
       )}
     </div>

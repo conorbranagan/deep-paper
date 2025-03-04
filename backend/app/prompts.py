@@ -6,7 +6,7 @@ import sys
 
 from app.models.paper import Paper, Citation
 
-MODEL = "openai/gpt-4o-mini"
+DEFAULT_MODEL = "openai/gpt-4o-mini"
 
 SUMMARIZE_TOPICS_PROMPT = """
 {paper_contents}
@@ -57,13 +57,13 @@ class PaperSummary(BaseModel):
     topics: list[TopicSummary]
 
 
-def summarize_paper(paper: Paper) -> PaperSummary:
+def summarize_paper(paper: Paper, model: str = DEFAULT_MODEL) -> PaperSummary:
     formatted_prompt = SUMMARIZE_TOPICS_PROMPT.format(
         n_topics=5, paper_contents=paper.all_contents()
     )
     topics_response = (
         litellm.completion(
-            model=MODEL,  # You can change this to your preferred model
+            model=model,  # You can change this to your preferred model
             messages=[{"role": "user", "content": formatted_prompt}],
             temperature=0.3,
             response_format={"type": "json_object"},
@@ -83,7 +83,7 @@ def summarize_paper(paper: Paper) -> PaperSummary:
     )
     summary_response = (
         litellm.completion(
-            model=MODEL,
+            model=model,
             messages=[{"role": "user", "content": formatted_prompt}],
             temperature=0.3,
         )
@@ -112,12 +112,12 @@ If the topic is not mentioned in the paper return "This topic is not mentioned i
 """
 
 
-def summarize_paper_topic(paper: Paper, topic: str):
+def summarize_paper_topic(paper: Paper, topic: str, model: str = DEFAULT_MODEL):
     formatted_prompt = SUMMARIZE_PAPER_FOR_TOPIC_PROMPT.format(
         topic=topic, paper_contents=paper.all_contents()
     )
     response = litellm.completion(
-        model=MODEL,  # You can change this to your preferred model
+        model=model,  # You can change this to your preferred model
         messages=[{"role": "user", "content": formatted_prompt}],
         temperature=0.3,
         stream=True,
@@ -160,7 +160,7 @@ if __name__ == "__main__":
         print("\nTopics:")
         for topic in summary.topics:
             print(f"- {topic.topic}: {topic.summary}")
-            print(f"  Further Reading:")
+            print("  Further Reading:")
             for fr in topic.further_reading:
                 print(f"  - {fr.title}: {fr.author}, {fr.url}")
 
