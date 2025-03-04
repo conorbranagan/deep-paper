@@ -41,8 +41,7 @@ SUMMARIZE_PAPER_PROMPT = """
 
 END PAPER
 
-Summarize this paper in 1 paragraph. Focus on the novel findings from the paper and explain why it's useful.
-No more than 5 sentences in the paragraph.
+Summarize this paper in 4 bullet points, one sentence per bullet point. Focus on the novel findings from the paper and explain why it's useful.
 """
 
 
@@ -99,6 +98,35 @@ def summarize_paper(paper: Paper) -> PaperSummary:
     )
 
 
+SUMMARIZE_PAPER_FOR_TOPIC_PROMPT = """
+{paper_contents}
+
+END PAPER
+
+Explain how this paper covers _specifically_ the topic "{topic}". You do not need to restate the paper name.
+
+Summaries should be no more than 2 paragraphs and must focus on the topic described.
+You may also reference key citations relevant to that topic by Author+Year in the usual format for a paper.
+
+If the topic is not mentioned in the paper return "This topic is not mentioned in this paper".
+"""
+
+
+def summarize_paper_topic(paper: Paper, topic: str):
+    formatted_prompt = SUMMARIZE_PAPER_FOR_TOPIC_PROMPT.format(
+        topic=topic, paper_contents=paper.all_contents()
+    )
+    response = litellm.completion(
+        model=MODEL,  # You can change this to your preferred model
+        messages=[{"role": "user", "content": formatted_prompt}],
+        temperature=0.3,
+        stream=True,
+    )
+    for chunk in response:
+        if chunk.choices[0].delta.content is not None:
+            yield chunk
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Academic paper processing tools")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
@@ -110,8 +138,15 @@ if __name__ == "__main__":
     summarize_parser.add_argument(
         "-u", "--url", type=str, required=True, help="URL of the paper to summarize"
     )
-    summarize_parser.add_argument(
-        "-o", "--output", type=str, help="Output file path for the summary (optional)"
+    # Summarize a paper for a specific topic
+    summarize_topic_parser = subparsers.add_parser(
+        "summarize_paper_topic", help="Summarize an academic paper for a topic"
+    )
+    summarize_topic_parser.add_argument(
+        "-u", "--url", type=str, required=True, help="URL of the paper to summarize"
+    )
+    summarize_topic_parser.add_argument(
+        "-t", "--topic", type=str, help="Topic to focus on"
     )
 
     args = parser.parse_args()
@@ -119,7 +154,7 @@ if __name__ == "__main__":
     if args.command == "summarize_paper":
         paper = Paper.from_url(args.url)
         summary = summarize_paper(paper)
-        #print(f"Paper Summary: {paper.title}")
+        print(f"Paper Summary: {paper.title}")
         print(f"\nAbstract:\n{summary.abstract}")
         print(f"\nSummary:\n{summary.summary}")
         print("\nTopics:")
@@ -129,6 +164,12 @@ if __name__ == "__main__":
             for fr in topic.further_reading:
                 print(f"  - {fr.title}: {fr.author}, {fr.url}")
 
+    elif args.command == "summarize_paper_topic":
+        paper = Paper.from_url(args.url)
+        for chunk in summarize_paper_topic(paper, args.topic):
+            if chunk.choices[0].delta.content:
+                print(chunk.choices[0].delta.content, end='')
+        print("\n")
 
     elif args.command is None:
         parser.print_help()

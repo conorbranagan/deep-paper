@@ -12,7 +12,7 @@ import requests
 import bibtexparser
 from pydantic import BaseModel
 from pylatexenc.latex2text import LatexNodes2Text
-from pylatexenc.latexwalker import LatexWalker, LatexEnvironmentNode
+from pylatexenc.latexwalker import LatexWalker, LatexEnvironmentNode, LatexMacroNode
 
 CACHE_PATH = "/tmp/deep-paper-arxiv-cache"
 
@@ -37,13 +37,14 @@ class Citation(BaseModel):
 
 
 class LatexFile(BaseModel):
-    name: str
+    filename: str
     latex: str
     as_text: str
 
 
 class Paper(BaseModel):
     arxiv_id: str
+    title: str
     citations: list[Citation]
     abstract: str
     # references: list["Paper"]
@@ -75,10 +76,13 @@ class Paper(BaseModel):
         #    references.append(Paper.from_url(url))
         latex_files = fetch_latex_files(arxiv_id)
         all_latex = "\n".join(f.latex for f in latex_files)
+        meta = parse_latex_metadata(all_latex, latex_files)
 
+        print(meta)
         return Paper(
             arxiv_id=arxiv_id,
-            abstract=parse_abstract(all_latex),
+            title=meta.title,
+            abstract=meta.abstract,
             contents=latex_files,
             citations=citations,
             references=references,
@@ -96,27 +100,56 @@ def parse_arxiv_id(url) -> Optional[str]:
     return arxiv_match.group(1)
 
 
-def parse_abstract(latex_string) -> str:
-    walker = LatexWalker(latex_string)
-    nodes, _, _ = walker.get_latex_nodes()
+class LatexMeta(BaseModel):
+    abstract: Optional[str]
+    title: Optional[str]
 
-    def _parse_abstract_in_nodes(nodes):
+
+def parse_latex_metadata(latex_str: str, files: list[LatexFile]) -> LatexMeta:
+    walker = LatexWalker(latex_str)
+    nodes, _, _ = walker.get_latex_nodes()
+    meta = LatexMeta(abstract="", title="")
+
+    def _parse_meta_in_nodes(nodes, meta):
         for node in nodes:
+            # Extract abstract - this can be in the latex
             if (
                 isinstance(node, LatexEnvironmentNode)
                 and node.environmentname == "abstract"
             ):
-                abstract = LatexNodes2Text().nodelist_to_text(node.nodelist)
-                # Remove line breaks since it should be a paragraph,.
-                return abstract.replace("\n", "")
+                # Remove line breaks since it should be a paragraph
+                meta.abstract = (
+                    LatexNodes2Text().nodelist_to_text(node.nodelist).replace("\n", " ")
+                )
+
+            # Extract title (assuming it's in a \title{} command)
+            if (
+                isinstance(node, LatexMacroNode)
+                and node.macroname == "title"
+                and node.nodeargd
+                and node.nodeargd.argnlist
+            ):
+                meta.title = (
+                    LatexNodes2Text()
+                    .nodelist_to_text(node.nodeargd.argnlist[0].nodelist)
+                    .replace("\n", "")
+                    .replace("  ", " ")
+                )
 
             if hasattr(node, "nodelist") and node.nodelist:
-                result = _parse_abstract_in_nodes(node.nodelist)
-                if result:
-                    return result
-        return ""
+                _parse_meta_in_nodes(node.nodelist, meta)
 
-    return _parse_abstract_in_nodes(nodes)
+        return meta
+
+    meta = _parse_meta_in_nodes(nodes, meta)
+
+    # Also check for a file call "abstract" in case it's referenced.
+    # This is super brittle!
+    for f in files:
+        if f.filename == "abstract.tex":
+            meta.abstract = f.as_text
+
+    return meta
 
 
 @contextmanager
@@ -181,7 +214,7 @@ def fetch_latex_files(arxiv_id: int) -> list[LatexFile]:
                     text_content = latex_content
                 files.append(
                     LatexFile(
-                        name=pathlib.Path(filepath).stem,
+                        filename=pathlib.Path(filepath).name,
                         latex=latex_content,
                         as_text=text_content,
                     )
