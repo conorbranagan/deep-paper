@@ -100,8 +100,6 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl }) => {
     <div className="space-y-6">
       <Card>
         <CardContent className="pt-6">
-          <h3 className="text-xl font-semibold mb-3">Topic Deep Dive</h3>
-
           {isLoading && topicContent.length === 0 && (
             <div className="flex items-center justify-center py-4">
               <div className="animate-pulse flex space-x-2">

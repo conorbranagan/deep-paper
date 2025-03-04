@@ -32,6 +32,7 @@ export default function Researcher() {
   const [paperData, setPaperData] = useState<PaperData | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [error, setError] = useState<string>('');
+  const [showAbstract, setShowAbstract] = useState<boolean>(false);
   const paperContentRef = useRef<HTMLDivElement>(null);
 
   // Scroll to paper content when loaded
@@ -57,6 +58,7 @@ export default function Researcher() {
     setIsLoading(true);
     setPaperData(null);
     setSelectedTopic(null);
+    setShowAbstract(false);
 
     try {
       // Call summarize endpoint
@@ -89,9 +91,13 @@ export default function Researcher() {
     setSelectedTopic(null);
   };
 
+  const toggleAbstract = () => {
+    setShowAbstract(!showAbstract);
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">Deep Paper</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">Paper Research Assistant</h1>
 
       <form onSubmit={handleSubmit} className="mb-8">
         <div className="flex gap-2 mb-2">
@@ -117,15 +123,6 @@ export default function Researcher() {
         {error && <p className="text-red-500 text-sm">{error}</p>}
       </form>
 
-      {/* Question Input - could be used later for asking questions about the paper */}
-      <div className="mb-6">
-        <QuestionInput
-          onSubmit={() => { }}
-          disabled={!paperData || isLoading}
-          placeholder="Ask a question about this paper"
-        />
-      </div>
-
       {isLoading && (
         <div className="flex items-center justify-center py-8">
           <div className="animate-pulse flex space-x-2">
@@ -140,22 +137,38 @@ export default function Researcher() {
       {paperData && !isLoading && (
         <div className="space-y-6" ref={paperContentRef}>
           {/* Paper Overview */}
+          <h2 className="text-2xl font-bold mb-4">📝 Overview</h2>
           <Card>
             <CardContent className="pt-6">
-              <h2 className="text-2xl font-bold mb-4">Abstract</h2>
-              <p className="text-gray-700 mb-4">{paperData.abstract}</p>
-
               <h2 className="text-2xl font-bold mb-4">Summary</h2>
               <ReactMarkdown components={{ ul: ({ ...props }) => (<ul style={{ display: "block", listStyleType: "disc", paddingInlineStart: "40px", }} {...props} />), ol: ({ ...props }) => (<ul style={{ display: "block", listStyleType: "decimal", paddingInlineStart: "40px", }} {...props} />), }}>
                 {paperData.summary}
               </ReactMarkdown>
+
+              <div className="mt-6 ">
+                <div
+                  onClick={toggleAbstract}
+                  className="p-3 cursor-pointer hover:bg-gray-50"
+                >
+                  <span className="text-md text-gray-500 align-text-middle">
+                    {showAbstract ? '▼' : '▶'}
+                  </span>
+                  <span className="text-xl font-bold p-2">Abstract</span>
+                </div>
+
+                {showAbstract && (
+                  <div className="p-4 border-t border-gray-200">
+                    <p className="text-gray-700">{paperData.abstract}</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
           {/* Topic Navigation */}
           {!selectedTopic ? (
             <div>
-              <h2 className="text-2xl font-bold mb-4">🔍 Explore Further</h2>
+              <h2 className="text-2xl font-bold mb-4">🔍 Explore Key Topics</h2>
               <TopicList topics={paperData.topics} onTopicSelect={handleTopicSelect} />
             </div>
           ) : (
@@ -173,6 +186,17 @@ export default function Researcher() {
               <TopicDetail topic={selectedTopic} paperUrl={url} />
             </div>
           )}
+
+
+          {/* Question Input - could be used later for asking questions about the paper */}
+          <h2 className="text-2xl font-bold mb-4">❓ Research Further</h2>
+          <div className="mb-6">
+            <QuestionInput
+              onSubmit={() => { }}
+              disabled={!paperData || isLoading}
+              placeholder="Input question here..."
+            />
+          </div>
 
           {/* Future Feature Areas - Stubbed UI */}
           <Tabs defaultValue="current" className="mt-8">
