@@ -3,6 +3,7 @@ import re
 import os
 import tarfile
 import pathlib
+import logging
 from typing import Optional
 from contextlib import contextmanager
 
@@ -11,12 +12,22 @@ import requests
 import bibtexparser
 from pydantic import BaseModel
 from pylatexenc.latex2text import LatexNodes2Text
+from pylatexenc.latexwalker import LatexWalker, LatexEnvironmentNode
 
 CACHE_PATH = "/tmp/deep-paper-arxiv-cache"
+
+log = logging.getLogger(__name__)
 
 
 class PaperNotFound(Exception):
     pass
+
+
+class InvalidPaperURL(Exception):
+    def __init__(self, url):
+        self.url = url
+        super().__init__(f"Invalid paper URL: {url}")
+
 
 class Citation(BaseModel):
     title: str
@@ -34,17 +45,26 @@ class LatexFile(BaseModel):
 class Paper(BaseModel):
     arxiv_id: str
     citations: list[Citation]
-    references: list["Paper"]
+    abstract: str
+    # references: list["Paper"]
     contents: list[LatexFile]
 
     @classmethod
-    def from_arxvid_id(cls, arxiv_id: str):
-        citations = fetch_citations(arxiv_id)
-        references = []
+    def from_url(cls, url: str):
+        return cls.from_arxvid_id(parse_arxiv_id(url))
 
+    @classmethod
+    def from_arxvid_id(cls, arxiv_id: str):
+        try:
+            citations = fetch_citations(arxiv_id)
+        except FileNotFoundError:
+            log.warning(f"no citations found for arxvid={arxiv_id}")
+            citations = []
+
+        references = []
         # Fetch papers one layer deep in citations
         # TODO: Concurrently fetch a bunch at once.
-        #for cit in citations:
+        # for cit in citations:
         #    if not cit.url:
         #        continue
         #    arxiv_id = parse_arxiv_id(cit.url)
@@ -53,19 +73,50 @@ class Paper(BaseModel):
         #        continue
         #    print(f"Fetching cituation: {url}")
         #    references.append(Paper.from_url(url))
+        latex_files = fetch_latex_files(arxiv_id)
+        all_latex = "\n".join(f.latex for f in latex_files)
 
         return Paper(
             arxiv_id=arxiv_id,
-            contents=fetch_contents(arxiv_id),
+            abstract=parse_abstract(all_latex),
+            contents=latex_files,
             citations=citations,
             references=references,
         )
+
+    def all_contents(self) -> str:
+        return "\n".join(c.latex for c in self.contents)
 
 
 def parse_arxiv_id(url) -> Optional[str]:
     arxiv_pattern = r"arxiv\.org/abs/(\d+\.\d+)"
     arxiv_match = re.search(arxiv_pattern, url)
+    if not arxiv_match:
+        raise InvalidPaperURL(url)
     return arxiv_match.group(1)
+
+
+def parse_abstract(latex_string) -> str:
+    walker = LatexWalker(latex_string)
+    nodes, _, _ = walker.get_latex_nodes()
+
+    def _parse_abstract_in_nodes(nodes):
+        for node in nodes:
+            if (
+                isinstance(node, LatexEnvironmentNode)
+                and node.environmentname == "abstract"
+            ):
+                abstract = LatexNodes2Text().nodelist_to_text(node.nodelist)
+                # Remove line breaks since it should be a paragraph,.
+                return abstract.replace("\n", "")
+
+            if hasattr(node, "nodelist") and node.nodelist:
+                result = _parse_abstract_in_nodes(node.nodelist)
+                if result:
+                    return result
+        return ""
+
+    return _parse_abstract_in_nodes(nodes)
 
 
 @contextmanager
@@ -115,7 +166,7 @@ def fetch_citations(arxiv_id: int) -> list[Citation]:
         ]
 
 
-def fetch_contents(arxiv_id: int) -> list[LatexFile]:
+def fetch_latex_files(arxiv_id: int) -> list[LatexFile]:
     files = []
     l2t = LatexNodes2Text()
     with fetch_tar(arxiv_id) as tar:
