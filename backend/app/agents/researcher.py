@@ -33,8 +33,7 @@ class PaperRetriever(Tool):
             return f"Unable to find paper for Arxiv ID {arxiv_id}"
 
         if query == "":
-            contents = "\n".join(lf.as_text for lf in paper.contents)
-            return f"\nPaper Contents\n\n{contents}"
+            return f"\nPaper Contents\n\n{paper.all_contents()}"
 
         source_docs = [Document(c.as_text) for c in paper.contents]
         text_splitter = RecursiveCharacterTextSplitter(

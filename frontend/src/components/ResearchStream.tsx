@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import MarkdownRenderer from './ui/markdown';
 
 interface ResearchStreamProps {
   data: Array<{
@@ -93,7 +94,7 @@ export default function ResearchStream({ data }: ResearchStreamProps) {
               <span className="font-medium">{label}</span>
             </div>
             <div className="prose max-w-none">
-              <ReactMarkdown>{item.content}</ReactMarkdown>
+              <MarkdownRenderer>{item.content}</MarkdownRenderer>
             </div>
           </div>
         );

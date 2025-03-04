@@ -1,18 +1,14 @@
-from typing import Any, Optional
 from dotenv import load_dotenv
 import datetime
-import uuid
 import os
 import json
 
 from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 from smolagents import LiteLLMModel
 
 from app.agents import researcher
 from app.agents.utils import step_as_json
-from app.models.research import RESEARCH_DB, Research
 from app.models.paper import Paper, InvalidPaperURL, PaperNotFound
 from app.prompts import summarize_paper, summarize_paper_topic
 
@@ -21,42 +17,25 @@ load_dotenv()
 
 router = APIRouter()
 
+DEFAULT_MODEL = "openai/gpt-4o-mini"
 
-class StartResearchRequest(BaseModel):
-    url: str
-
-
-@router.post("/api/research/start")
-async def start(request: StartResearchRequest):
-    research_id = uuid.uuid4().hex
-    RESEARCH_DB.set(research_id, Research(id=research_id, url=request.url))
-    return {"researchId": research_id}
-
-
-@router.get("/api/research/stream")
+@router.get("/api/research/deep")
 async def stream(request: Request):
-    research_id = request.query_params.get("id")
-    if not research_id:
+    url = request.query_params.get("url")
+    question = request.query_params.get("question")
+    model = request.query_params.get("model") or DEFAULT_MODEL
+    if not url or not question:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Id needed to stream research",
-        )
-
-    research = RESEARCH_DB.get(research_id)
-    if not research:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"no research found for id={id}",
+            detail="Must provide url and question",
         )
 
     model = LiteLLMModel(
-        "openai/gpt-4o-mini",
+        model,
         temperature=0.2,
         api_key=os.environ["OPENAI_API_KEY"],
     )
-    researcher_gen = researcher.run(
-        research.url, "Summarize this paper", model, stream=True
-    )
+    researcher_gen = researcher.run(url, question, model, stream=True)
 
     async def event_generator():
         for agent_step in researcher_gen:
@@ -79,6 +58,7 @@ async def stream(request: Request):
 @router.get("/api/research/summarize")
 async def summarize(request: Request):
     url = request.query_params.get("url")
+    model = request.query_params.get("model") or DEFAULT_MODEL
     try:
         paper = Paper.from_url(url)
     except InvalidPaperURL:
@@ -92,13 +72,14 @@ async def summarize(request: Request):
             detail=f"no research found for id={id}",
         )
 
-    return summarize_paper(paper)
+    return summarize_paper(paper, model=model)
 
 
 @router.get("/api/research/summarize/topic")
 async def summarize_topic(request: Request):
     url = request.query_params.get("url")
     topic = request.query_params.get("topic")
+    model = request.query_params.get("model") or DEFAULT_MODEL
     try:
         paper = Paper.from_url(url)
     except InvalidPaperURL:
@@ -113,7 +94,7 @@ async def summarize_topic(request: Request):
         )
 
     async def event_generator():
-        for chunk in summarize_paper_topic(paper, topic):
+        for chunk in summarize_paper_topic(paper, topic, model=model):
             if await request.is_disconnected():
                 break
             yield {
