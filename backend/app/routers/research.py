@@ -13,6 +13,8 @@ from smolagents import LiteLLMModel
 from app.agents import researcher
 from app.agents.utils import step_as_json
 from app.models.research import RESEARCH_DB, Research
+from app.models.paper import Paper, InvalidPaperURL, PaperNotFound
+from app.prompts import summarize_paper, summarize_paper_topic
 
 
 load_dotenv()
@@ -52,7 +54,9 @@ async def stream(request: Request):
         temperature=0.2,
         api_key=os.environ["OPENAI_API_KEY"],
     )
-    researcher_gen = researcher.run(research.url, "Summarize this paper", model, stream=True)
+    researcher_gen = researcher.run(
+        research.url, "Summarize this paper", model, stream=True
+    )
 
     async def event_generator():
         for agent_step in researcher_gen:
@@ -69,5 +73,55 @@ async def stream(request: Request):
                 "id": str(datetime.datetime.now().timestamp()),
             }
 
+    return EventSourceResponse(event_generator())
+
+
+@router.get("/api/research/summarize")
+async def summarize(request: Request):
+    url = request.query_params.get("url")
+    try:
+        paper = Paper.from_url(url)
+    except InvalidPaperURL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="url is not a valid arxiv url",
+        )
+    except PaperNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"no research found for id={id}",
+        )
+
+    return summarize_paper(paper)
+
+
+@router.get("/api/research/summarize/topic")
+async def summarize_topic(request: Request):
+    url = request.query_params.get("url")
+    topic = request.query_params.get("topic")
+    try:
+        paper = Paper.from_url(url)
+    except InvalidPaperURL:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="url is not a valid arxiv url",
+        )
+    except PaperNotFound:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"no research found for id={id}",
+        )
+
+    async def event_generator():
+        for chunk in summarize_paper_topic(paper, topic):
+            if await request.is_disconnected():
+                break
+            yield {
+                "event": "message",
+                "data": json.dumps(
+                    {"type": "content", "content": chunk.choices[0].delta.content}
+                ),
+                "id": str(datetime.datetime.now().timestamp()),
+            }
 
     return EventSourceResponse(event_generator())

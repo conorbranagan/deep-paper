@@ -1,0 +1,7 @@
+2025-03-04 11:29:18,824 - uvicorn.error - INFO - Started server process [17184]
+2025-03-04 11:29:18,825 - uvicorn.error - INFO - Waiting for application startup.
+2025-03-04 11:29:18,825 - uvicorn.error - INFO - Application startup complete.
+2025-03-04 11:29:19,430 - uvicorn.error - INFO - Shutting down
+2025-03-04 11:29:19,531 - uvicorn.error - INFO - Waiting for application shutdown.
+2025-03-04 11:29:19,531 - uvicorn.error - INFO - Application shutdown complete.
+2025-03-04 11:29:19,531 - uvicorn.error - INFO - Finished server process [17184]

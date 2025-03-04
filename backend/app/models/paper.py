@@ -3,6 +3,7 @@ import re
 import os
 import tarfile
 import pathlib
+import logging
 from typing import Optional
 from contextlib import contextmanager
 
@@ -11,12 +12,22 @@ import requests
 import bibtexparser
 from pydantic import BaseModel
 from pylatexenc.latex2text import LatexNodes2Text
+from pylatexenc.latexwalker import LatexWalker, LatexEnvironmentNode, LatexMacroNode
 
 CACHE_PATH = "/tmp/deep-paper-arxiv-cache"
+
+log = logging.getLogger(__name__)
 
 
 class PaperNotFound(Exception):
     pass
+
+
+class InvalidPaperURL(Exception):
+    def __init__(self, url):
+        self.url = url
+        super().__init__(f"Invalid paper URL: {url}")
+
 
 class Citation(BaseModel):
     title: str
@@ -26,25 +37,35 @@ class Citation(BaseModel):
 
 
 class LatexFile(BaseModel):
-    name: str
+    filename: str
     latex: str
     as_text: str
 
 
 class Paper(BaseModel):
     arxiv_id: str
+    title: str
     citations: list[Citation]
-    references: list["Paper"]
+    abstract: str
+    # references: list["Paper"]
     contents: list[LatexFile]
 
     @classmethod
-    def from_arxvid_id(cls, arxiv_id: str):
-        citations = fetch_citations(arxiv_id)
-        references = []
+    def from_url(cls, url: str):
+        return cls.from_arxvid_id(parse_arxiv_id(url))
 
+    @classmethod
+    def from_arxvid_id(cls, arxiv_id: str):
+        try:
+            citations = fetch_citations(arxiv_id)
+        except FileNotFoundError:
+            log.warning(f"no citations found for arxvid={arxiv_id}")
+            citations = []
+
+        references = []
         # Fetch papers one layer deep in citations
         # TODO: Concurrently fetch a bunch at once.
-        #for cit in citations:
+        # for cit in citations:
         #    if not cit.url:
         #        continue
         #    arxiv_id = parse_arxiv_id(cit.url)
@@ -53,19 +74,82 @@ class Paper(BaseModel):
         #        continue
         #    print(f"Fetching cituation: {url}")
         #    references.append(Paper.from_url(url))
+        latex_files = fetch_latex_files(arxiv_id)
+        all_latex = "\n".join(f.latex for f in latex_files)
+        meta = parse_latex_metadata(all_latex, latex_files)
 
+        print(meta)
         return Paper(
             arxiv_id=arxiv_id,
-            contents=fetch_contents(arxiv_id),
+            title=meta.title,
+            abstract=meta.abstract,
+            contents=latex_files,
             citations=citations,
             references=references,
         )
+
+    def all_contents(self) -> str:
+        return "\n".join(c.latex for c in self.contents)
 
 
 def parse_arxiv_id(url) -> Optional[str]:
     arxiv_pattern = r"arxiv\.org/abs/(\d+\.\d+)"
     arxiv_match = re.search(arxiv_pattern, url)
+    if not arxiv_match:
+        raise InvalidPaperURL(url)
     return arxiv_match.group(1)
+
+
+class LatexMeta(BaseModel):
+    abstract: Optional[str]
+    title: Optional[str]
+
+
+def parse_latex_metadata(latex_str: str, files: list[LatexFile]) -> LatexMeta:
+    walker = LatexWalker(latex_str)
+    nodes, _, _ = walker.get_latex_nodes()
+    meta = LatexMeta(abstract="", title="")
+
+    def _parse_meta_in_nodes(nodes, meta):
+        for node in nodes:
+            # Extract abstract - this can be in the latex
+            if (
+                isinstance(node, LatexEnvironmentNode)
+                and node.environmentname == "abstract"
+            ):
+                # Remove line breaks since it should be a paragraph
+                meta.abstract = (
+                    LatexNodes2Text().nodelist_to_text(node.nodelist).replace("\n", " ")
+                )
+
+            # Extract title (assuming it's in a \title{} command)
+            if (
+                isinstance(node, LatexMacroNode)
+                and node.macroname == "title"
+                and node.nodeargd
+                and node.nodeargd.argnlist
+            ):
+                meta.title = (
+                    LatexNodes2Text()
+                    .nodelist_to_text(node.nodeargd.argnlist[0].nodelist)
+                    .replace("\n", "")
+                    .replace("  ", " ")
+                )
+
+            if hasattr(node, "nodelist") and node.nodelist:
+                _parse_meta_in_nodes(node.nodelist, meta)
+
+        return meta
+
+    meta = _parse_meta_in_nodes(nodes, meta)
+
+    # Also check for a file call "abstract" in case it's referenced.
+    # This is super brittle!
+    for f in files:
+        if f.filename == "abstract.tex":
+            meta.abstract = f.as_text
+
+    return meta
 
 
 @contextmanager
@@ -115,7 +199,7 @@ def fetch_citations(arxiv_id: int) -> list[Citation]:
         ]
 
 
-def fetch_contents(arxiv_id: int) -> list[LatexFile]:
+def fetch_latex_files(arxiv_id: int) -> list[LatexFile]:
     files = []
     l2t = LatexNodes2Text()
     with fetch_tar(arxiv_id) as tar:
@@ -130,7 +214,7 @@ def fetch_contents(arxiv_id: int) -> list[LatexFile]:
                     text_content = latex_content
                 files.append(
                     LatexFile(
-                        name=pathlib.Path(filepath).stem,
+                        filename=pathlib.Path(filepath).name,
                         latex=latex_content,
                         as_text=text_content,
                     )

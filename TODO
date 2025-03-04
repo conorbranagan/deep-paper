@@ -1,0 +1,15 @@
+- [ ] Pull the paper abstract
+- [ ] Gather key topics from a paper
+    These will be buttons in the UI for further exploration
+
+
+/summarize
+    Abstract: <...>
+    Topics: [<...>, ...]
+
+    # Not sure if this is a separate endpoint?
+    Topics: [
+        Topic: <...>
+        Summary: <...>
+        Citations: <...>
+    ]
