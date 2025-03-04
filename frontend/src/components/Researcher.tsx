@@ -27,7 +27,8 @@ interface Topic {
   }>;
 }
 
-interface PaperData {
+interface PaperSummary {
+  title: string;
   abstract: string;
   summary: string;
   topics: Topic[];
@@ -53,7 +54,7 @@ const modelOptions: ModelOption[] = [
 export default function Researcher() {
   const [url, setUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [paperData, setPaperData] = useState<PaperData | null>(null);
+  const [paperSummary, setPaperSummary] = useState<PaperSummary | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [error, setError] = useState<string>('');
   const [showAbstract, setShowAbstract] = useState<boolean>(false);
@@ -66,10 +67,10 @@ export default function Researcher() {
 
   // Scroll to paper content when loaded
   useEffect(() => {
-    if (paperData && paperContentRef.current) {
+    if (paperSummary && paperContentRef.current) {
       paperContentRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [paperData]);
+  }, [paperSummary]);
 
   const validateUrl = (url: string): boolean => {
     return url.startsWith('https://arxiv.org/abs')
@@ -106,7 +107,7 @@ export default function Researcher() {
 
     setError('');
     setIsLoading(true);
-    setPaperData(null);
+    setPaperSummary(null);
     setSelectedTopic(null);
     setShowAbstract(false);
     setResearchStream([]);
@@ -120,7 +121,7 @@ export default function Researcher() {
       }
 
       const data = await response.json();
-      setPaperData(data);
+      setPaperSummary(data);
       setIsLoading(false);
     } catch (error) {
       console.error('Research error:', error);
@@ -255,15 +256,16 @@ export default function Researcher() {
         </div>
       )}
 
-      {paperData && !isLoading && (
+      {paperSummary && !isLoading && (
         <div className="space-y-6" ref={paperContentRef}>
           {/* Paper Overview */}
           <h2 className="text-2xl font-bold mb-4">📝 Overview</h2>
           <Card>
             <CardContent className="pt-6">
-              <h2 className="text-2xl font-bold mb-4">Summary</h2>
+              <h2 className="text-3xl font-bold mb-4">{paperSummary.title}</h2>
+              <h3 className="text-xl font-bold mb-4">Summary</h3>
               <MarkdownRenderer>
-                {paperData.summary}
+                {paperSummary.summary}
               </MarkdownRenderer>
 
               <div className="mt-6 ">
@@ -279,7 +281,7 @@ export default function Researcher() {
 
                 {showAbstract && (
                   <div className="p-4 border-t border-gray-200">
-                    <p className="text-gray-700">{paperData.abstract}</p>
+                    <p className="text-gray-700">{paperSummary.abstract}</p>
                   </div>
                 )}
               </div>
@@ -290,7 +292,7 @@ export default function Researcher() {
           {!selectedTopic ? (
             <div>
               <h2 className="text-2xl font-bold mb-4">🔍 Explore Key Topics</h2>
-              <TopicList topics={paperData.topics} onTopicSelect={handleTopicSelect} />
+              <TopicList topics={paperSummary.topics} onTopicSelect={handleTopicSelect} />
             </div>
           ) : (
             <div>
@@ -314,7 +316,7 @@ export default function Researcher() {
           <div className="mb-6">
             <QuestionInput
               onSubmit={handleQuestionSubmit}
-              disabled={!paperData || isLoading || isResearching}
+              disabled={!paperSummary || isLoading || isResearching}
               placeholder="Ask a research question about this paper..."
             />
             {researchStream.length > 0 && (

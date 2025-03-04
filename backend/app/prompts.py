@@ -52,6 +52,7 @@ class TopicSummary(BaseModel):
 
 
 class PaperSummary(BaseModel):
+    title: str
     abstract: str
     summary: str
     topics: list[TopicSummary]
@@ -92,6 +93,7 @@ def summarize_paper(paper: Paper, model: str = DEFAULT_MODEL) -> PaperSummary:
     )
 
     return PaperSummary(
+        title=paper.title,
         abstract=paper.abstract,
         summary=summary_response,  # You might want to generate a separate summary
         topics=topic_summaries,

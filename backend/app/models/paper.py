@@ -12,7 +12,7 @@ import requests
 import bibtexparser
 from pydantic import BaseModel
 from pylatexenc.latex2text import LatexNodes2Text
-from pylatexenc.latexwalker import LatexWalker, LatexEnvironmentNode, LatexMacroNode
+from pylatexenc.latexwalker import LatexWalker, LatexEnvironmentNode, LatexMacroNode, LatexCharsNode
 
 CACHE_PATH = "/tmp/deep-paper-arxiv-cache"
 
@@ -117,10 +117,15 @@ def parse_latex_metadata(latex_str: str, files: list[LatexFile]) -> LatexMeta:
                 isinstance(node, LatexEnvironmentNode)
                 and node.environmentname == "abstract"
             ):
-                # Remove line breaks since it should be a paragraph
-                meta.abstract = (
-                    LatexNodes2Text().nodelist_to_text(node.nodelist).replace("\n", " ")
-                )
+                try:
+                    # Remove line breaks since it should be a paragraph
+                    meta.abstract = (
+                        LatexNodes2Text().nodelist_to_text(node.nodelist).replace("\n", " ")
+                    )
+                except Exception:
+                    # Some papers have formats that break our library. We fall back to a crappy but workable solution
+                    char_nodes = [n for n in node.nodelist if isinstance(n, LatexCharsNode)]
+                    meta.abstract = " ".join(c.chars for c in char_nodes)
 
             # Extract title (assuming it's in a \title{} command)
             if (
