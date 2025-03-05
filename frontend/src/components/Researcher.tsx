@@ -44,44 +44,55 @@ interface ModelOption {
   name: string;
 }
 
-// Model configuration
+interface ResearcherProps {
+  onLoadingChange?: (isLoading: boolean) => void;
+  onTitleChange?: (title: string) => void;
+}
+
 const modelOptions: ModelOption[] = [
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
   { id: 'anthropic/claude-3-7-sonnet-latest', name: 'Claude 3.7 Sonnet' },
   { id: 'openai/gpt-4o', name: 'GPT-4o' },
 ];
 
-export default function Researcher() {
+export default function Researcher({ onLoadingChange, onTitleChange }: ResearcherProps) {
   const [url, setUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [paperSummary, setPaperSummary] = useState<PaperSummary | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [error, setError] = useState<string>('');
   const [showAbstract, setShowAbstract] = useState<boolean>(false);
-  const paperContentRef = useRef<HTMLDivElement>(null);
   const [selectedModel, setSelectedModel] = useState<string>(modelOptions[0].id);
-
-  // New states for research question functionality
   const [isResearching, setIsResearching] = useState<boolean>(false);
-  const [researchStream, setResearchStream] = useState<ResearchStreamData[]>([]);
+  const [researchStream, setResearchStream] = useState<ResearchStreamData[]>([]);  
 
-  // Scroll to paper content when loaded
+  // Only call the callback if the loading state has actually changed. Avoids a loop hitting max depth.
+  // FIXME: Is this the best way to do this?
+  const prevLoadingStateRef = useRef<boolean | null>(null);
   useEffect(() => {
-    if (paperSummary && paperContentRef.current) {
-      paperContentRef.current.scrollIntoView({ behavior: 'smooth' });
+    const currentLoadingState = isLoading || isResearching;
+    if (prevLoadingStateRef.current !== currentLoadingState) {
+      onLoadingChange?.(currentLoadingState);
+      prevLoadingStateRef.current = currentLoadingState;
     }
-  }, [paperSummary]);
+  }, [isLoading, isResearching, onLoadingChange]);
+
+  const prevTitleRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (paperSummary?.title && paperSummary.title !== prevTitleRef.current) {
+      prevTitleRef.current = paperSummary.title;
+      if (onTitleChange) {
+        onTitleChange(paperSummary.title);
+      }
+    }
+  }, [paperSummary, onTitleChange]);
 
   const validateUrl = (url: string): boolean => {
     return url.startsWith('https://arxiv.org/abs')
   };
   
-  // Helper function for API calls
   const callApi = async (endpoint: string, params: Record<string, string>) => {
-    // Add model to params
     const allParams = { ...params, model: selectedModel };
-    
-    // Convert params to URL search params
     const searchParams = new URLSearchParams();
     Object.entries(allParams).forEach(([key, value]) => {
       searchParams.append(key, value);
@@ -111,11 +122,10 @@ export default function Researcher() {
     setSelectedTopic(null);
     setShowAbstract(false);
     setResearchStream([]);
+    onTitleChange?.(url);
 
     try {
-      // Call summarize endpoint using helper function
       const response = await callApi('research/summarize', { url });
-
       if (!response.ok) {
         throw new Error('Failed to summarize paper');
       }
@@ -142,7 +152,6 @@ export default function Researcher() {
     setShowAbstract(!showAbstract);
   };
 
-  // New function to handle research question submission
   const handleQuestionSubmit = async (questionText: string) => {
     if (!url || !questionText.trim()) {
       setError('Please enter both a valid URL and a research question');
@@ -154,7 +163,6 @@ export default function Researcher() {
     setResearchStream([]);
 
     try {
-      // Using search params to properly encode URL parameters including the model
       const searchParams = new URLSearchParams({
         url: url,
         question: questionText,
@@ -257,7 +265,7 @@ export default function Researcher() {
       )}
 
       {paperSummary && !isLoading && (
-        <div className="space-y-6" ref={paperContentRef}>
+        <div className="space-y-6">
           {/* Paper Overview */}
           <h2 className="text-2xl font-bold mb-4">📝 Overview</h2>
           <Card>

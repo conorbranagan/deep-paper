@@ -39,7 +39,6 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model }) => 
     setTopicContent('');
 
     try {
-      // Encode both URL and topic name for the API call
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
@@ -61,7 +60,6 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model }) => 
       };
 
       eventSource.onerror = () => {
-        //setError('Connection error. Please try again.');
         eventSource.close();
         setIsLoading(false);
       };
@@ -77,7 +75,6 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model }) => 
     let eventSource: EventSource;
 
     if (paperUrl && topic) {
-      // Your EventSource setup code
       const encodedUrl = encodeURIComponent(paperUrl);
       const encodedTopic = encodeURIComponent(topic.topic);
       const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/research/summarize/topic?url=${encodedUrl}&topic=${encodedTopic}&model=${model}`;
@@ -85,7 +82,6 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model }) => 
       loadTopicSummary(eventSource);
     }
 
-    // Cleanup function
     return () => {
       if (eventSource) {
         eventSource.close();

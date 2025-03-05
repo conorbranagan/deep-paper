@@ -3,11 +3,9 @@
 import * as React from 'react';
 import { ButtonHTMLAttributes } from 'react';
 
-// Define variant and size types for better type safety
 type ButtonVariant = 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
 
-// Extend ButtonHTMLAttributes to include our custom props
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   className?: string;
   variant?: ButtonVariant;

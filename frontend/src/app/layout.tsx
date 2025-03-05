@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Deep Paper",
-  description: "TODO",
+  title: "Paper Research Assistant",
+  description: "Assists in researching a paper from Arxiv",
 };
 
 export default function RootLayout({

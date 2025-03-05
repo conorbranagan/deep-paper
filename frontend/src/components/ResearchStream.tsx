@@ -9,7 +9,6 @@ interface ResearchStreamProps {
 }
 
 export default function ResearchStream({ data }: ResearchStreamProps) {
-  // Helper function to get appropriate styling for each content type
   const getContentStyle = (type: string) => {
     switch (type) {
       case 'thought':
@@ -31,7 +30,6 @@ export default function ResearchStream({ data }: ResearchStreamProps) {
     }
   };
 
-  // Helper function to get icon and label for each content type
   const getTypeDetails = (type: string) => {
     switch (type) {
       case 'thought':
