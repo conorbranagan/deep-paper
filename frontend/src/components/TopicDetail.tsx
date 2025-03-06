@@ -2,29 +2,19 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent } from './ui/card';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, BookOpen } from 'lucide-react';
 import MarkdownRenderer from './ui/markdown';
+import { Topic } from './types';
 
-interface FurtherReading {
-  title: string;
-  author: string;
-  year: number;
-  url: string;
-}
-
-interface Topic {
-  topic: string;
-  summary: string;
-  further_reading: FurtherReading[];
-}
 
 interface TopicDetailProps {
   topic: Topic;
   paperUrl?: string;
   model: string;
+  onResearchPaper?: (url: string) => void;
 }
 
-const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model }) => {
+const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model, onResearchPaper }) => {
   const [topicContent, setTopicContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
@@ -32,44 +22,44 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model }) => 
 
   const loadTopicSummary = useCallback(
     async (eventSource: EventSource) => {
-    if (!paperUrl) return;
+      if (!paperUrl) return;
 
-    setIsLoading(true);
-    setError('');
-    setTopicContent('');
+      setIsLoading(true);
+      setError('');
+      setTopicContent('');
 
-    try {
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
+      try {
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
 
-          if (data.type === 'content') {
-            setTopicContent(prev => prev + data.content);
-          } else if (data.type === 'complete') {
+            if (data.type === 'content') {
+              setTopicContent(prev => prev + data.content);
+            } else if (data.type === 'complete') {
+              eventSource.close();
+              setIsLoading(false);
+            } else if (data.type === 'error') {
+              throw new Error(data.content || 'An error occurred');
+            }
+          } catch (error) {
+            console.error('Error parsing stream data:', error);
+            setError('Failed to process topic summary');
             eventSource.close();
             setIsLoading(false);
-          } else if (data.type === 'error') {
-            throw new Error(data.content || 'An error occurred');
           }
-        } catch (error) {
-          console.error('Error parsing stream data:', error);
-          setError('Failed to process topic summary');
+        };
+
+        eventSource.onerror = () => {
           eventSource.close();
           setIsLoading(false);
-        }
-      };
+        };
 
-      eventSource.onerror = () => {
-        eventSource.close();
+      } catch (error) {
+        console.error('Topic summary error:', error);
+        setError('Failed to load topic summary');
         setIsLoading(false);
-      };
-
-    } catch (error) {
-      console.error('Topic summary error:', error);
-      setError('Failed to load topic summary');
-      setIsLoading(false);
-    }
-  }, [paperUrl]);
+      }
+    }, [paperUrl]);
 
   useEffect(() => {
     let eventSource: EventSource;
@@ -88,6 +78,10 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model }) => 
       }
     };
   }, [paperUrl, topic, model, loadTopicSummary]);
+
+  const isArxivUrl = (url: string): boolean => {
+    return url.startsWith('https://arxiv.org/abs');
+  };
 
   if (!topic) {
     return <p>No topic selected.</p>;
@@ -133,21 +127,51 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model }) => 
         {topic.further_reading && topic.further_reading.length > 0 ? (
           <div className="space-y-3">
             {topic.further_reading.map((paper, index) => (
-              <a
+              <div
                 key={index}
-                href={paper.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block p-4 border rounded-lg bg-white hover:bg-gray-50 transition-colors duration-200"
+                className="p-4 border rounded-lg bg-white hover:bg-gray-50 transition-colors duration-200"
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className="font-medium text-blue-600">{paper.title}</h4>
+                    <h4 className="font-medium text-blue-600">
+                      <a
+                        href={paper.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline"
+                      >
+                        {paper.title}
+                      </a>
+                    </h4>
                     <p className="text-gray-600 text-sm">{paper.author} ({paper.year})</p>
                   </div>
-                  <ExternalLink className="text-gray-400 h-4 w-4 flex-shrink-0 mt-1" />
+                  <div className="flex space-x-2">
+                    {isArxivUrl(paper.url) && onResearchPaper && (
+                      <a
+                        href={paper.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          onResearchPaper(paper.url);
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
+                        title="Research this topic"
+                      >
+                        <BookOpen className="h-4 w-4 flex-shrink-0 mt-1" />
+                      </a>
+                    )}
+                    <a
+                      href={paper.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <ExternalLink className="h-4 w-4 flex-shrink-0 mt-1" />
+                    </a>
+                  </div>
                 </div>
-              </a>
+              </div>
             ))}
           </div>
         ) : (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, use } from 'react';
 import QuestionInput from './QuestionInput';
 import TopicList from './TopicList';
 import TopicDetail from './TopicDetail';
@@ -15,17 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-
-interface Topic {
-  topic: string;
-  summary: string;
-  further_reading: Array<{
-    title: string;
-    author: string;
-    year: number;
-    url: string;
-  }>;
-}
+import { Topic } from './types';
 
 interface PaperSummary {
   title: string;
@@ -42,7 +32,9 @@ interface ModelOption {
 interface ResearcherProps {
   onLoadingChange?: (isLoading: boolean) => void;
   onTitleChange?: (title: string) => void;
+  onResearchPaper?: (url: string) => void;
   tabId?: string;
+  initialUrl?: string;
 }
 
 const modelOptions: ModelOption[] = [
@@ -51,8 +43,12 @@ const modelOptions: ModelOption[] = [
   { id: 'openai/gpt-4o', name: 'GPT-4o' },
 ];
 
-export default function Researcher({ onLoadingChange, onTitleChange, tabId }: ResearcherProps) {
-  const [url, setUrl] = useState<string>('');
+const validateUrl = (url: string): boolean => {
+  return url.startsWith('https://arxiv.org/abs')
+};
+
+export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitleChange, onResearchPaper, tabId, initialUrl }: ResearcherProps) => {
+  const [url, setUrl] = useState<string>(initialUrl || '');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [paperSummary, setPaperSummary] = useState<PaperSummary | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
@@ -64,7 +60,7 @@ export default function Researcher({ onLoadingChange, onTitleChange, tabId }: Re
   // Load state from localStorage on initial render
   useEffect(() => {
     if (!tabId) return;
-    
+
     try {
       const savedState = localStorage.getItem(`research-state-${tabId}`);
       if (savedState) {
@@ -81,14 +77,12 @@ export default function Researcher({ onLoadingChange, onTitleChange, tabId }: Re
   // Save state to localStorage whenever paperSummary changes
   useEffect(() => {
     if (!tabId) return;
-    
     try {
       const stateToSave = {
         paperSummary,
         url,
         selectedModel
       };
-      
       if (paperSummary) {
         localStorage.setItem(`research-state-${tabId}`, JSON.stringify(stateToSave));
       }
@@ -118,30 +112,7 @@ export default function Researcher({ onLoadingChange, onTitleChange, tabId }: Re
     }
   }, [paperSummary, onTitleChange]);
 
-  const validateUrl = (url: string): boolean => {
-    return url.startsWith('https://arxiv.org/abs')
-  };
-
-  const callApi = async (endpoint: string, params: Record<string, string>) => {
-    const allParams = { ...params, model: selectedModel };
-    const searchParams = new URLSearchParams();
-    Object.entries(allParams).forEach(([key, value]) => {
-      searchParams.append(key, value);
-    });
-
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/${endpoint}?${searchParams.toString()}`;
-
-    return fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const fetchSummary = async (url: string) => {
     if (!validateUrl(url)) {
       setError('Please enter a valid arXiv URL (e.g. https://arxiv.org/abs/2005.14165)');
       return;
@@ -155,11 +126,21 @@ export default function Researcher({ onLoadingChange, onTitleChange, tabId }: Re
     onTitleChange?.(url);
 
     try {
-      const response = await callApi('research/summarize', { url });
+      const searchParams = new URLSearchParams();
+      searchParams.append('url', url);
+      searchParams.append('model', selectedModel);
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/research/summarize?${searchParams.toString()}`;
+
+      const fetchPromise = fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      const response = await fetchPromise;
       if (!response.ok) {
         throw new Error('Failed to summarize paper');
       }
-
       const data = await response.json();
       setPaperSummary(data);
       setIsLoading(false);
@@ -167,14 +148,25 @@ export default function Researcher({ onLoadingChange, onTitleChange, tabId }: Re
       console.error('Research error:', error);
       setError('Failed to process the paper. Please try again.');
       setIsLoading(false);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    if (initialUrl) {
+      fetchSummary(initialUrl);
+    }
+  }, [initialUrl])
+
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">Paper Research Assistant</h1>
-
-      <form onSubmit={handleSubmit} className="mb-8">
+      <form onSubmit={(e: React.FormEvent) => {
+        e.preventDefault();
+        fetchSummary(url);
+      }} className="mb-8">
         <div className="flex gap-2 mb-2">
           <input
             type="text"
@@ -275,10 +267,14 @@ export default function Researcher({ onLoadingChange, onTitleChange, tabId }: Re
                 </Button>
                 <h2 className="text-2xl font-bold">{selectedTopic.topic}</h2>
               </div>
-              <TopicDetail topic={selectedTopic} paperUrl={url} model={selectedModel} />
+              <TopicDetail
+                topic={selectedTopic}
+                paperUrl={url}
+                model={selectedModel}
+                onResearchPaper={onResearchPaper}
+              />
             </div>
           )}
-
 
           <h2 className="text-2xl font-bold mb-4">❓ Research Further</h2>
           <div className="mb-6">
@@ -295,13 +291,15 @@ export default function Researcher({ onLoadingChange, onTitleChange, tabId }: Re
               placeholder="Ask a research question about this paper..."
             />
             <ResearchStream
-                url={url}
-                model={selectedModel}
-                question={question}
-              />
+              url={url}
+              model={selectedModel}
+              question={question}
+            />
           </div>
         </div>
       )}
     </div>
   );
 }
+
+export default Researcher;

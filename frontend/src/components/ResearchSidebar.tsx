@@ -1,12 +1,7 @@
 import React from 'react';
 import { Button } from './ui/button';
 import { PlusIcon, XIcon } from 'lucide-react';
-
-export interface ResearchTab {
-  id: string;
-  title?: string;
-  isLoading?: boolean;
-}
+import { ResearchTab } from './types';
 
 interface ResearchSidebarProps {
   activeTabID: string;

@@ -1,19 +1,7 @@
 'use client';
 
 import React from 'react';
-
-interface FurtherReading {
-  title: string;
-  author: string;
-  year: number;
-  url: string;
-}
-
-interface Topic {
-  topic: string;
-  summary: string;
-  further_reading: FurtherReading[];
-}
+import { Topic } from './types';
 
 interface TopicListProps {
   topics: Topic[];

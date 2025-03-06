@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Researcher from './Researcher';
-import ResearchSidebar, { ResearchTab } from './ResearchSidebar';
+import ResearchSidebar from './ResearchSidebar';
+import { ResearchTab } from './types';
 
 export default function ResearchContainer() {
   const [tabs, setTabs] = useState<ResearchTab[]>([]);
@@ -46,6 +47,23 @@ export default function ResearchContainer() {
     }
   }, [activeTabID]);
 
+  const generateTabID = useCallback(() => {
+    // Always add to the latest tab number to avoid re-use.
+    const latestTab = tabs[tabs.length - 1];
+    return `tab-${parseInt(latestTab.id.split('-')[1], 10) + 1}`;
+  }, [tabs]);
+
+  const onResearchPaper = useCallback((url: string) => {
+    if (url) {
+      const newTab: ResearchTab = {
+        id: generateTabID(),
+        isLoading: false,
+        initialUrl: url
+      };
+      setTabs(prevTabs => [...prevTabs, newTab]);
+    }
+  }, [generateTabID]);
+
   const initializeDefaultTab = () => {
     const defaultTab: ResearchTab = {
       id: 'tab-1',
@@ -53,12 +71,7 @@ export default function ResearchContainer() {
     };
     setTabs([defaultTab]);
     setActiveTabID(defaultTab.id);
-  };
-
-  const generateTabID = () => {
-    // Create a deterministic ID based on the current number of tabs
-    return `tab-${tabs.length + 1}`;
-  };
+  }; 
 
   const handleAddTab = () => {
     const newTab: ResearchTab = {
@@ -136,6 +149,8 @@ export default function ResearchContainer() {
               tabId={tab.id}
               onLoadingChange={(isLoading: boolean) => handleLoadingChange(isLoading, tab.id)}
               onTitleChange={(title: string) => handleTitleChange(title, tab.id)}
+              onResearchPaper={onResearchPaper}
+              initialUrl={tab.initialUrl}
             />
           </div>
         ))}
