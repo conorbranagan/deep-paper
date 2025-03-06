@@ -19,7 +19,7 @@ const TopicList: React.FC<TopicListProps> = ({ topics, onTopicSelect }) => {
         <button
           key={index}
           onClick={() => onTopicSelect(topic)}
-          className="text-left p-4 border rounded-lg bg-white hover:bg-blue-50 transition-colors duration-200 shadow-sm hover:shadow"
+          className="text-left p-4 border rounded-lg bg-white hover:bg-blue-50 transition-colors duration-200 shadow-sm hover:shadow cursor-pointer"
         >
           <h3 className="font-semibold text-lg mb-2">{topic.topic}</h3>
           <p className="text-gray-600 text-sm line-clamp-3">{topic.summary}</p>
