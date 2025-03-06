@@ -92,6 +92,9 @@ class Paper(BaseModel):
     def all_contents(self) -> str:
         return "\n".join(p for p in self.pdf.pages)
 
+    def latex_contents(self) -> str:
+        return "\n".join(f.latex for f in self.latex_files)
+
 
 def parse_arxiv_id(url) -> Optional[str]:
     arxiv_pattern = r"arxiv\.org/abs/(\d+\.\d+)"

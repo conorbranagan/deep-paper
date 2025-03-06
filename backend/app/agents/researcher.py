@@ -15,7 +15,7 @@ from app.config import settings
 
 class PaperRetriever(Tool):
     name = "paper_retriever"
-    description = "Fetch a paper by the arxiv id"
+    description = "Fetch a paper by the arxiv id and return the contents in LaTeX format"
     inputs = {
         "arxiv_id": {
             "type": "string",
@@ -35,7 +35,7 @@ class PaperRetriever(Tool):
             return f"Unable to find paper for Arxiv ID {arxiv_id}"
 
         if query == "":
-            return f"\nPaper Contents\n\n{paper.all_contents()}"
+            return f"\nPaper Contents in LaTeX\n\n{paper.latex_contents()}"
 
         source_docs = [Document(c.as_text) for c in paper.contents]
         text_splitter = RecursiveCharacterTextSplitter(
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-m",
         "--model",
-        choices=["claude", "gpt-4o-mini", "local-32b", "local-8b"],
+        choices=["claude-sonnet", "claude-haiku", "gpt-4o-mini", "local-32b", "local-8b"],
         default="gpt-4o-mini",
     )
     args = parser.parse_args()
@@ -152,9 +152,17 @@ if __name__ == "__main__":
             max_new_tokens=4096,
             device_map="auto",
         )
-    elif args.model == "claude":
+    elif args.model == "claude-sonnet":
         model = LiteLLMModel(
-            "anthropic/claude-3-7-sonnet-latest",
+            # 3.7 has lower limits than 3.5, 3.5 should be sufficient
+            "anthropic/claude-3-5-sonnet-latest",
+            temperature=0.2,
+            api_key=settings.ANTHROPIC_API_KEY,
+        )
+    elif args.model == "claude-haiku":
+        model = LiteLLMModel(
+            # 3.7 has lower limits than 3.5, 3.5 should be sufficient
+            "anthropic/claude-3-5-haiku-latest",
             temperature=0.2,
             api_key=settings.ANTHROPIC_API_KEY,
         )
