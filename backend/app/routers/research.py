@@ -1,41 +1,43 @@
 from dotenv import load_dotenv
 import datetime
-import os
 import json
+import uuid
 
 from fastapi import APIRouter, HTTPException, Request, status
 from sse_starlette.sse import EventSourceResponse
-from smolagents import LiteLLMModel
 
 from app.agents import researcher
 from app.agents.utils import step_as_json
 from app.models.paper import Paper, InvalidPaperURL, PaperNotFound
 from app.prompts import summarize_paper, summarize_paper_topic
+from app.config import settings
 
 
 load_dotenv()
 
 router = APIRouter()
 
-DEFAULT_MODEL = "openai/gpt-4o-mini"
 
 @router.get("/api/research/deep")
 async def stream(request: Request):
     url = request.query_params.get("url")
     question = request.query_params.get("question")
-    model = request.query_params.get("model") or DEFAULT_MODEL
+    model = request.query_params.get("model") or settings.DEFAULT_MODEL
     if not url or not question:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Must provide url and question",
         )
 
-    model = LiteLLMModel(
-        model,
-        temperature=0.2,
-        api_key=os.environ["OPENAI_API_KEY"],
-    )
-    researcher_gen = researcher.run(url, question, model, stream=True)
+
+    agent_model = settings.agent_model(model, 0.2, metadata={
+        "metadata": {
+            "run_name": "paper-research",
+            "project_name": "deep-paper",
+            "trace_id": uuid.uuid4().hex,
+        },
+    })
+    researcher_gen = researcher.run(url, question, agent_model, stream=True)
 
     async def event_generator():
         for agent_step in researcher_gen:
@@ -58,7 +60,7 @@ async def stream(request: Request):
 @router.get("/api/research/summarize")
 async def summarize(request: Request):
     url = request.query_params.get("url")
-    model = request.query_params.get("model") or DEFAULT_MODEL
+    model = request.query_params.get("model") or settings.DEFAULT_MODEL
     try:
         paper = Paper.from_url(url)
     except InvalidPaperURL:
@@ -79,7 +81,7 @@ async def summarize(request: Request):
 async def summarize_topic(request: Request):
     url = request.query_params.get("url")
     topic = request.query_params.get("topic")
-    model = request.query_params.get("model") or DEFAULT_MODEL
+    model = request.query_params.get("model") or settings.DEFAULT_MODEL
     try:
         paper = Paper.from_url(url)
     except InvalidPaperURL:

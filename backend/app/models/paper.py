@@ -4,6 +4,7 @@ import os
 import tarfile
 import pathlib
 import logging
+import tempfile
 from typing import Optional
 from contextlib import contextmanager
 
@@ -12,7 +13,13 @@ import requests
 import bibtexparser
 from pydantic import BaseModel
 from pylatexenc.latex2text import LatexNodes2Text
-from pylatexenc.latexwalker import LatexWalker, LatexEnvironmentNode, LatexMacroNode, LatexCharsNode
+from pylatexenc.latexwalker import (
+    LatexWalker,
+    LatexEnvironmentNode,
+    LatexMacroNode,
+    LatexCharsNode,
+)
+import pymupdf
 
 CACHE_PATH = "/tmp/deep-paper-arxiv-cache"
 
@@ -43,13 +50,19 @@ class LatexFile(BaseModel):
     as_text: str
 
 
+class PDFFile(BaseModel):
+    filename: str
+    pages: list[str]
+    images: list[str]
+
+
 class Paper(BaseModel):
     arxiv_id: str
     title: str
     citations: list[Citation]
     abstract: str
-    # references: list["Paper"]
-    contents: list[LatexFile]
+    latex_files: list[LatexFile]
+    pdf: PDFFile
 
     @classmethod
     def from_url(cls, url: str):
@@ -63,33 +76,21 @@ class Paper(BaseModel):
             log.warning(f"no citations found for arxvid={arxiv_id}")
             citations = []
 
-        references = []
-        # Fetch papers one layer deep in citations
-        # TODO: Concurrently fetch a bunch at once.
-        # for cit in citations:
-        #    if not cit.url:
-        #        continue
-        #    arxiv_id = parse_arxiv_id(cit.url)
-        #    if not arxiv_id:
-        #        print(f"Skipping cituation url: {cit.url}")
-        #        continue
-        #    print(f"Fetching cituation: {url}")
-        #    references.append(Paper.from_url(url))
         latex_files = fetch_latex_files(arxiv_id)
         all_latex = "\n".join(f.latex for f in latex_files)
         meta = parse_latex_metadata(all_latex, latex_files)
-
+        pdf_file = fetch_pdf_file(arxiv_id)
         return Paper(
             arxiv_id=arxiv_id,
             title=meta.title,
             abstract=meta.abstract,
-            contents=latex_files,
+            latex_files=latex_files,
             citations=citations,
-            references=references,
+            pdf=pdf_file,
         )
 
     def all_contents(self) -> str:
-        return "\n".join(c.latex for c in self.contents)
+        return "\n".join(p for p in self.pdf.pages)
 
 
 def parse_arxiv_id(url) -> Optional[str]:
@@ -120,11 +121,15 @@ def parse_latex_metadata(latex_str: str, files: list[LatexFile]) -> LatexMeta:
                 try:
                     # Remove line breaks since it should be a paragraph
                     meta.abstract = (
-                        LatexNodes2Text().nodelist_to_text(node.nodelist).replace("\n", " ")
+                        LatexNodes2Text()
+                        .nodelist_to_text(node.nodelist)
+                        .replace("\n", " ")
                     )
                 except Exception:
                     # Some papers have formats that break our library. We fall back to a crappy but workable solution
-                    char_nodes = [n for n in node.nodelist if isinstance(n, LatexCharsNode)]
+                    char_nodes = [
+                        n for n in node.nodelist if isinstance(n, LatexCharsNode)
+                    ]
                     meta.abstract = " ".join(c.chars for c in char_nodes)
 
             # Extract title (assuming it's in a \title{} command)
@@ -226,3 +231,22 @@ def fetch_latex_files(arxiv_id: int) -> list[LatexFile]:
                     )
                 )
     return files
+
+
+def fetch_pdf_file(arxiv_id: int) -> PDFFile:
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        url = f"https://arxiv.org/pdf/{arxiv_id}"
+        response = requests.get(url)
+        if response.status_code == 404:
+            raise FileNotFoundError(f"PDF not found for arxiv_id: {arxiv_id}")
+        elif response.status_code != 200:
+            raise Exception(
+                f"Error fetching PDF for arxiv_id: {arxiv_id}, code={response.status_code}, text={response.text}"
+            )
+
+        temp_file.write(response.content)
+        temp_file_path = temp_file.name
+
+    pdf_file = pymupdf.open(temp_file_path)
+
+    return PDFFile(filename=url, pages=[p.get_text() for p in pdf_file], images=[])

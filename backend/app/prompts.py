@@ -1,12 +1,11 @@
 import argparse
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel
 import litellm
 import json
 import sys
 
 from app.models.paper import Paper, Citation
-
-DEFAULT_MODEL = "openai/gpt-4o-mini"
+from app.config import settings
 
 SUMMARIZE_TOPICS_PROMPT = """
 {paper_contents}
@@ -16,24 +15,8 @@ END PAPER
 What are {n_topics} key topics from this paper? Focus on topics oriented towards the paper's abstract and not topics that
 would be in every single paper.
 
-Use the JSON response format:
-
-{{"key_topics": [
-    {{
-        "topic": "<short topic name>"
-        "summary": "<1 sentence on relevancy of topic to this paper>"
-        "further_reading": [
-            # Up to 5 Citations
-            {{
-                "title": <paper title>,
-                "author": <paper author>,
-                "year": <paper year>,
-                "url": <if available give a url>
-            }},
-            ...
-        ]
-    }}, ...
-]}}
+When a reference is made with a format like arXiv:1502.05698 you should extract the arxiv id for the url.
+Only provide the arxiv url when it's available.
 """
 
 SUMMARIZE_PAPER_PROMPT = """
@@ -51,6 +34,10 @@ class TopicSummary(BaseModel):
     further_reading: list[Citation]
 
 
+class KeyTopics(BaseModel):
+    topics: list[TopicSummary]
+
+
 class PaperSummary(BaseModel):
     title: str
     abstract: str
@@ -58,7 +45,7 @@ class PaperSummary(BaseModel):
     topics: list[TopicSummary]
 
 
-def summarize_paper(paper: Paper, model: str = DEFAULT_MODEL) -> PaperSummary:
+def summarize_paper(paper: Paper, model: str = settings.DEFAULT_MODEL) -> PaperSummary:
     formatted_prompt = SUMMARIZE_TOPICS_PROMPT.format(
         n_topics=5, paper_contents=paper.all_contents()
     )
@@ -67,15 +54,13 @@ def summarize_paper(paper: Paper, model: str = DEFAULT_MODEL) -> PaperSummary:
             model=model,  # You can change this to your preferred model
             messages=[{"role": "user", "content": formatted_prompt}],
             temperature=0.3,
-            response_format={"type": "json_object"},
+            response_format=KeyTopics,
         )
         .choices[0]
         .message.content
     )
     try:
-        response = json.loads(topics_response)
-        ta = TypeAdapter(list[TopicSummary])
-        topic_summaries = ta.validate_python(response["key_topics"])
+        key_topics = KeyTopics.model_validate_json(topics_response)
     except json.JSONDecodeError:
         raise  # TODO
 
@@ -96,7 +81,7 @@ def summarize_paper(paper: Paper, model: str = DEFAULT_MODEL) -> PaperSummary:
         title=paper.title,
         abstract=paper.abstract,
         summary=summary_response,  # You might want to generate a separate summary
-        topics=topic_summaries,
+        topics=key_topics.topics,
     )
 
 
@@ -114,7 +99,9 @@ If the topic is not mentioned in the paper return "This topic is not mentioned i
 """
 
 
-def summarize_paper_topic(paper: Paper, topic: str, model: str = DEFAULT_MODEL):
+def summarize_paper_topic(
+    paper: Paper, topic: str, model: str = settings.DEFAULT_MODEL
+):
     formatted_prompt = SUMMARIZE_PAPER_FOR_TOPIC_PROMPT.format(
         topic=topic, paper_contents=paper.all_contents()
     )
@@ -131,6 +118,12 @@ def summarize_paper_topic(paper: Paper, topic: str, model: str = DEFAULT_MODEL):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Academic paper processing tools")
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=settings.DEFAULT_MODEL,
+        help="Model to use for summarization",
+    )
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # Summarize paper command
@@ -155,7 +148,7 @@ if __name__ == "__main__":
 
     if args.command == "summarize_paper":
         paper = Paper.from_url(args.url)
-        summary = summarize_paper(paper)
+        summary = summarize_paper(paper, model=args.model)
         print(f"Paper Summary: {paper.title}")
         print(f"\nAbstract:\n{summary.abstract}")
         print(f"\nSummary:\n{summary.summary}")
@@ -168,9 +161,9 @@ if __name__ == "__main__":
 
     elif args.command == "summarize_paper_topic":
         paper = Paper.from_url(args.url)
-        for chunk in summarize_paper_topic(paper, args.topic):
+        for chunk in summarize_paper_topic(paper, args.topic, model=args.model):
             if chunk.choices[0].delta.content:
-                print(chunk.choices[0].delta.content, end='')
+                print(chunk.choices[0].delta.content, end="")
         print("\n")
 
     elif args.command is None:

@@ -1,14 +1,16 @@
 import argparse
-import os
+
+from langsmith import traceable
 
 from app.models.paper import Paper, PaperNotFound
 
-from smolagents import Tool, CodeAgent, LiteLLMModel
-from smolagents import TransformersModel
+from smolagents import Tool, CodeAgent, LiteLLMModel, TransformersModel
 from smolagents.monitoring import LogLevel
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
 from langchain_community.retrievers import BM25Retriever
+
+from app.config import settings
 
 
 class PaperRetriever(Tool):
@@ -54,6 +56,7 @@ class PaperRetriever(Tool):
             ]
         )
 
+
 class CitationRetriever(Tool):
     name = "citation_retriever"
     description = "Retrieve details of a citation by arxiv id and one or more citation ids. You must have both! Returns the title, author and url"
@@ -73,7 +76,7 @@ class CitationRetriever(Tool):
 
     def forward(self, arxiv_id: str, citation_ids: list[str]) -> str:
         if arxiv_id == "" or len(citation_ids) == 0:
-            return f"Must provide both arxiv and citation ids"
+            return "Must provide both arxiv and citation ids"
         try:
             paper = Paper.from_arxvid_id(arxiv_id)
         except PaperNotFound:
@@ -87,6 +90,7 @@ class CitationRetriever(Tool):
         for match in matching:
             resp += f"\n==== Citation Details ====\nID: {match.id}\nTitle: {match.title}\nAuthor: {match.author}\nYear: {match.year}\nURL: {match.url or "None"}"
         return resp
+
 
 prompt_tpl = """
 You are researching the paper:
@@ -103,6 +107,7 @@ Please use your available to tools to answer the following prompt.
 """
 
 
+@traceable
 def run(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     paper = Paper.from_url(url)
     agent = CodeAgent(
@@ -128,7 +133,10 @@ if __name__ == "__main__":
     parser.add_argument("url", help="URL for paper (either PDF or Arxiv link)")
     parser.add_argument("prompt", help="Prompt for researching this paper")
     parser.add_argument(
-        "-m", "--model", choices=["claude", "gpt-4o-mini", "local-32b", "local-8b"], default="gpt-4o-mini"
+        "-m",
+        "--model",
+        choices=["claude", "gpt-4o-mini", "local-32b", "local-8b"],
+        default="gpt-4o-mini",
     )
     args = parser.parse_args()
 
@@ -148,13 +156,13 @@ if __name__ == "__main__":
         model = LiteLLMModel(
             "anthropic/claude-3-7-sonnet-latest",
             temperature=0.2,
-            api_key=os.environ["ANTHROPIC_API_KEY"],
+            api_key=settings.ANTHROPIC_API_KEY,
         )
     elif args.model == "gpt-4o-mini":
         model = LiteLLMModel(
             "openai/gpt-4o-mini",
             temperature=0.2,
-            api_key=os.environ["OPENAI_API_KEY"],
+            api_key=settings.OPENAI_API_KEY,
         )
     else:
         raise Exception(f"unknown model: {args.model}")
