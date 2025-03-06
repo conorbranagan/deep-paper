@@ -42,6 +42,7 @@ interface ModelOption {
 interface ResearcherProps {
   onLoadingChange?: (isLoading: boolean) => void;
   onTitleChange?: (title: string) => void;
+  tabId?: string;
 }
 
 const modelOptions: ModelOption[] = [
@@ -50,7 +51,7 @@ const modelOptions: ModelOption[] = [
   { id: 'openai/gpt-4o', name: 'GPT-4o' },
 ];
 
-export default function Researcher({ onLoadingChange, onTitleChange }: ResearcherProps) {
+export default function Researcher({ onLoadingChange, onTitleChange, tabId }: ResearcherProps) {
   const [url, setUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [paperSummary, setPaperSummary] = useState<PaperSummary | null>(null);
@@ -59,6 +60,42 @@ export default function Researcher({ onLoadingChange, onTitleChange }: Researche
   const [showAbstract, setShowAbstract] = useState<boolean>(false);
   const [selectedModel, setSelectedModel] = useState<string>(modelOptions[0].id);
   const [question, setQuestion] = useState<string>('');
+
+  // Load state from localStorage on initial render
+  useEffect(() => {
+    if (!tabId) return;
+    
+    try {
+      const savedState = localStorage.getItem(`research-state-${tabId}`);
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        setPaperSummary(parsedState.paperSummary);
+        setUrl(parsedState.url || '');
+        setSelectedModel(parsedState.selectedModel || modelOptions[0].id);
+      }
+    } catch (error) {
+      console.error('Error loading research state from localStorage:', error);
+    }
+  }, [tabId]);
+
+  // Save state to localStorage whenever paperSummary changes
+  useEffect(() => {
+    if (!tabId) return;
+    
+    try {
+      const stateToSave = {
+        paperSummary,
+        url,
+        selectedModel
+      };
+      
+      if (paperSummary) {
+        localStorage.setItem(`research-state-${tabId}`, JSON.stringify(stateToSave));
+      }
+    } catch (error) {
+      console.error('Error saving research state to localStorage:', error);
+    }
+  }, [paperSummary, url, selectedModel, tabId]);
 
   // Only call the callback if the loading state has actually changed. Avoids a loop hitting max depth.
   // FIXME: Is this the best way to do this?

@@ -71,12 +71,9 @@ export default function ResearchStream({
 
       const deepURL = `${process.env.NEXT_PUBLIC_API_URL}/api/research/deep?${searchParams.toString()}`;
 
-      // Close any existing connection
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
-
-      // Create new EventSource
       eventSourceRef.current = new EventSource(deepURL);
 
       eventSourceRef.current.onmessage = (event) => {
