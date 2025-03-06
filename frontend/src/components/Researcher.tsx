@@ -34,11 +34,6 @@ interface PaperSummary {
   topics: Topic[];
 }
 
-interface ResearchStreamData {
-  type: string;
-  content: string;
-}
-
 interface ModelOption {
   id: string;
   name: string;
@@ -63,19 +58,18 @@ export default function Researcher({ onLoadingChange, onTitleChange }: Researche
   const [error, setError] = useState<string>('');
   const [showAbstract, setShowAbstract] = useState<boolean>(false);
   const [selectedModel, setSelectedModel] = useState<string>(modelOptions[0].id);
-  const [isResearching, setIsResearching] = useState<boolean>(false);
-  const [researchStream, setResearchStream] = useState<ResearchStreamData[]>([]);  
+  const [question, setQuestion] = useState<string>('');
 
   // Only call the callback if the loading state has actually changed. Avoids a loop hitting max depth.
   // FIXME: Is this the best way to do this?
   const prevLoadingStateRef = useRef<boolean | null>(null);
   useEffect(() => {
-    const currentLoadingState = isLoading || isResearching;
+    const currentLoadingState = isLoading;
     if (prevLoadingStateRef.current !== currentLoadingState) {
       onLoadingChange?.(currentLoadingState);
       prevLoadingStateRef.current = currentLoadingState;
     }
-  }, [isLoading, isResearching, onLoadingChange]);
+  }, [isLoading, onLoadingChange]);
 
   const prevTitleRef = useRef<string | null>(null);
   useEffect(() => {
@@ -90,16 +84,16 @@ export default function Researcher({ onLoadingChange, onTitleChange }: Researche
   const validateUrl = (url: string): boolean => {
     return url.startsWith('https://arxiv.org/abs')
   };
-  
+
   const callApi = async (endpoint: string, params: Record<string, string>) => {
     const allParams = { ...params, model: selectedModel };
     const searchParams = new URLSearchParams();
     Object.entries(allParams).forEach(([key, value]) => {
       searchParams.append(key, value);
     });
-    
+
     const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/${endpoint}?${searchParams.toString()}`;
-    
+
     return fetch(apiUrl, {
       method: 'GET',
       headers: {
@@ -121,7 +115,6 @@ export default function Researcher({ onLoadingChange, onTitleChange }: Researche
     setPaperSummary(null);
     setSelectedTopic(null);
     setShowAbstract(false);
-    setResearchStream([]);
     onTitleChange?.(url);
 
     try {
@@ -137,75 +130,6 @@ export default function Researcher({ onLoadingChange, onTitleChange }: Researche
       console.error('Research error:', error);
       setError('Failed to process the paper. Please try again.');
       setIsLoading(false);
-    }
-  };
-
-  const handleTopicSelect = (topic: Topic) => {
-    setSelectedTopic(topic);
-  };
-
-  const resetTopicSelection = () => {
-    setSelectedTopic(null);
-  };
-
-  const toggleAbstract = () => {
-    setShowAbstract(!showAbstract);
-  };
-
-  const handleQuestionSubmit = async (questionText: string) => {
-    if (!url || !questionText.trim()) {
-      setError('Please enter both a valid URL and a research question');
-      return;
-    }
-
-    setError('');
-    setIsResearching(true);
-    setResearchStream([]);
-
-    try {
-      const searchParams = new URLSearchParams({
-        url: url,
-        question: questionText,
-        model: selectedModel
-      });
-      
-      const deepURL = `${process.env.NEXT_PUBLIC_API_URL}/api/research/deep?${searchParams.toString()}`;
-      const eventSource = new EventSource(deepURL);
-
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          if (data.type === 'complete') {
-            eventSource.close();
-            setIsResearching(false);
-          } else if (data.type === 'error') {
-            throw new Error(data.content || 'An error occurred');
-          } else {
-            setResearchStream(prev => [...prev, data]);
-          }
-        } catch (error) {
-          console.error('Error parsing stream data:', error);
-          setError('Failed to research');
-          eventSource.close();
-          setIsResearching(false);
-        }
-      };
-
-      eventSource.onerror = () => {
-        eventSource.close();
-        setIsResearching(false);
-      };
-    } catch (error) {
-      console.error('Deep research error:', error);
-      setResearchStream(prev => [
-        ...prev,
-        {
-          type: 'error',
-          content: 'Failed to process your research question. Please try again.'
-        }
-      ]);
-      setIsResearching(false);
     }
   };
 
@@ -278,7 +202,7 @@ export default function Researcher({ onLoadingChange, onTitleChange }: Researche
 
               <div className="mt-6 ">
                 <div
-                  onClick={toggleAbstract}
+                  onClick={() => { setShowAbstract(!showAbstract) }}
                   className="p-3 cursor-pointer hover:bg-gray-50"
                 >
                   <span className="text-md text-gray-500 align-text-middle">
@@ -300,14 +224,14 @@ export default function Researcher({ onLoadingChange, onTitleChange }: Researche
           {!selectedTopic ? (
             <div>
               <h2 className="text-2xl font-bold mb-4">🔍 Explore Key Topics</h2>
-              <TopicList topics={paperSummary.topics} onTopicSelect={handleTopicSelect} />
+              <TopicList topics={paperSummary.topics} onTopicSelect={(topic: Topic) => { setSelectedTopic(topic) }} />
             </div>
           ) : (
             <div>
               <div className="flex items-center mb-4">
                 <Button
                   variant="outline"
-                  onClick={resetTopicSelection}
+                  onClick={() => { setSelectedTopic(null) }}
                   className="mr-4"
                 >
                   ← Back to Topics
@@ -319,31 +243,25 @@ export default function Researcher({ onLoadingChange, onTitleChange }: Researche
           )}
 
 
-          {/* Question Input - now connected to handleQuestionSubmit */}
           <h2 className="text-2xl font-bold mb-4">❓ Research Further</h2>
           <div className="mb-6">
             <QuestionInput
-              onSubmit={handleQuestionSubmit}
-              disabled={!paperSummary || isLoading || isResearching}
+              onSubmit={(question: string) => {
+                if (!url || !question.trim()) {
+                  setError('Please enter both a valid URL and a research question');
+                  return;
+                }
+                setQuestion(question);
+                setError('');
+              }}
+              disabled={!paperSummary || isLoading}
               placeholder="Ask a research question about this paper..."
             />
-            {researchStream.length > 0 && (
-              <Card className="mt-6">
-                <CardContent className="pt-6">
-                  <ResearchStream data={researchStream} />
-                </CardContent>
-              </Card>
-            )}
-            {isResearching && (
-              <div className="mt-3 flex items-center">
-                <div className="animate-pulse flex space-x-2">
-                  <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
-                  <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
-                  <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
-                </div>
-                <div className="ml-3 text-sm text-gray-600">Researching your question with {modelOptions.find(m => m.id === selectedModel)?.name}...</div>
-              </div>
-            )}
+            <ResearchStream
+                url={url}
+                model={selectedModel}
+                question={question}
+              />
           </div>
         </div>
       )}
