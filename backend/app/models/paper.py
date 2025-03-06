@@ -18,6 +18,7 @@ from pylatexenc.latexwalker import (
     LatexEnvironmentNode,
     LatexMacroNode,
     LatexCharsNode,
+    LatexGroupNode,
 )
 import pymupdf
 
@@ -44,10 +45,15 @@ class Citation(BaseModel):
     url: Optional[str] = None
 
 
-class LatexFile(BaseModel):
-    filename: str
-    latex: str
-    as_text: str
+class SubSectionNode(BaseModel):
+    title: str
+    content: str
+
+
+class SectionNode(BaseModel):
+    title: str
+    subsections: list[SubSectionNode]
+    content: str
 
 
 class PDFFile(BaseModel):
@@ -56,12 +62,18 @@ class PDFFile(BaseModel):
     images: list[str]
 
 
+class LatexFile(BaseModel):
+    filename: str
+    latex: str
+    as_text: str
+
+
 class Paper(BaseModel):
     arxiv_id: str
     title: str
-    citations: list[Citation]
     abstract: str
-    latex_files: list[LatexFile]
+    citations: list[Citation]
+    sections: list[SectionNode]
     pdf: PDFFile
 
     @classmethod
@@ -76,24 +88,38 @@ class Paper(BaseModel):
             log.warning(f"no citations found for arxvid={arxiv_id}")
             citations = []
 
-        latex_files = fetch_latex_files(arxiv_id)
-        all_latex = "\n".join(f.latex for f in latex_files)
-        meta = parse_latex_metadata(all_latex, latex_files)
         pdf_file = fetch_pdf_file(arxiv_id)
-        return Paper(
+        paper = Paper(
             arxiv_id=arxiv_id,
-            title=meta.title,
-            abstract=meta.abstract,
-            latex_files=latex_files,
             citations=citations,
             pdf=pdf_file,
+            title="",
+            abstract="",
+            sections=[],
         )
+        for latex_file in fetch_latex_files(arxiv_id):
+            parse_latex_file(paper, latex_file)
+
+        if paper.title == "":
+            paper.title = f"Unknown Title (Arxiv ID: {arxiv_id})"
+
+        return paper
 
     def all_contents(self) -> str:
         return "\n".join(p for p in self.pdf.pages)
 
     def latex_contents(self) -> str:
         return "\n".join(f.latex for f in self.latex_files)
+
+    def print_tree(self):
+        print(f"================ {self.title} ================")
+        print(f"ABSTRACT: {self.abstract[:25]}...")
+        for section in self.sections:
+            print(f"SECTION: {section.title}")
+            print(f"    CONTENT: {section.content}")
+            for subsection in section.subsections:
+                print(f"  SUBSECTION: {subsection.title}")
+                print(f"    CONTENT: {subsection.content}")
 
 
 def parse_arxiv_id(url) -> Optional[str]:
@@ -104,65 +130,147 @@ def parse_arxiv_id(url) -> Optional[str]:
     return arxiv_match.group(1)
 
 
-class LatexMeta(BaseModel):
-    abstract: Optional[str]
-    title: Optional[str]
+def _parse_section(node: LatexMacroNode) -> str:
+    name_node = node.nodeargd.argnlist[2]
+    if isinstance(name_node, LatexGroupNode):
+        return "".join(
+            c.chars
+            for c in node.nodeargd.argnlist[2].nodelist
+            if isinstance(c, LatexCharsNode)
+        )
+    else:
+        return node.nodeargd.argnlist[2].nodelist[0].chars
 
 
-def parse_latex_metadata(latex_str: str, files: list[LatexFile]) -> LatexMeta:
-    walker = LatexWalker(latex_str)
-    nodes, _, _ = walker.get_latex_nodes()
-    meta = LatexMeta(abstract="", title="")
+def _parse_subsection(node: LatexMacroNode) -> str:
+    name_node = node.nodeargd.argnlist[2]
+    if isinstance(name_node, LatexGroupNode):
+        return "".join(
+            c.chars
+            for c in node.nodeargd.argnlist[2].nodelist
+            if isinstance(c, LatexCharsNode)
+        )
+    else:
+        return node.nodeargd.argnlist[2].nodelist[0].chars
 
-    def _parse_meta_in_nodes(nodes, meta):
+
+def parse_latex_file(paper: Paper, latex_file: LatexFile) -> None:
+    """
+    Parses a single LaTeX file into a list of sections and subsections by walking the AST.
+    Captures other metadata like title and abstract along the way.
+    This function mutates the paper object in place.
+    """
+    sections = []
+    current_section: SectionNode | None = None
+    current_section_content: list[str] = []
+    current_subsection: SubSectionNode | None = None
+    current_subsection_content: list[str] = []
+    abstract = ""
+    title = ""
+
+    def _process_nodes(nodes):
+        # This is a closure that holds the current section and subsection
+        nonlocal current_section, current_section_content
+        nonlocal current_subsection, current_subsection_content
+        nonlocal abstract, title
+
         for node in nodes:
-            # Extract abstract - this can be in the latex
-            if (
+            if isinstance(node, LatexMacroNode) and node.macroname == "section":
+                # Close out the current section and subsection.
+                if current_subsection is not None:
+                    current_subsection.content = "\n".join(current_subsection_content)
+                    current_section.subsections.append(current_subsection)
+
+                if current_section is not None:
+                    current_section.content = "\n".join(current_section_content)
+                    sections.append(current_section)
+
+                # Start a new section.
+                current_section = SectionNode(
+                    title=_parse_section(node), subsections=[], content=""
+                )
+                current_section_content = []
+                current_subsection = None
+                current_subsection_content = []
+
+            elif isinstance(node, LatexMacroNode) and node.macroname == "subsection":
+                # Close out the current subsection.
+                if current_subsection is not None:
+                    current_subsection.content = "\n".join(current_subsection_content)
+                    # We can have cases where the section never starts, this means we have it in the filename.
+                    if current_section is None:
+                        current_section = SectionNode(
+                            title=latex_file.filename, subsections=[]
+                        )
+                    current_section.subsections.append(current_subsection)
+
+                # Start a new subsection.
+                current_subsection = SubSectionNode(
+                    title=_parse_subsection(node), content=""
+                )
+                current_subsection_content = []
+
+            elif (
                 isinstance(node, LatexEnvironmentNode)
                 and node.environmentname == "abstract"
             ):
                 try:
                     # Remove line breaks since it should be a paragraph
-                    meta.abstract = (
+                    abstract = (
                         LatexNodes2Text()
                         .nodelist_to_text(node.nodelist)
                         .replace("\n", " ")
-                    )
+                    ).strip()
                 except Exception:
                     # Some papers have formats that break our library. We fall back to a crappy but workable solution
                     char_nodes = [
                         n for n in node.nodelist if isinstance(n, LatexCharsNode)
                     ]
-                    meta.abstract = " ".join(c.chars for c in char_nodes)
+                    abstract = " ".join(c.chars for c in char_nodes).strip()
 
             # Extract title (assuming it's in a \title{} command)
-            if (
-                isinstance(node, LatexMacroNode)
-                and node.macroname == "title"
-                and node.nodeargd
-                and node.nodeargd.argnlist
-            ):
-                meta.title = (
+            elif isinstance(node, LatexMacroNode) and node.macroname == "title":
+                title = (
                     LatexNodes2Text()
                     .nodelist_to_text(node.nodeargd.argnlist[0].nodelist)
                     .replace("\n", "")
                     .replace("  ", " ")
                 )
+            else:
+                # Add node to current section or subsection.
+                try:
+                    text = LatexNodes2Text().node_to_text(node).replace("\n", " ")
+                except Exception:
+                    text = ""
+                if hasattr(node, "nodelist"):
+                    try:
+                        text += LatexNodes2Text().nodelist_to_text(node.nodelist).replace("\n", " ")
+                    except Exception:
+                       text += ""
+                if current_section is not None:
+                    current_section_content.append(text)
+                if current_subsection is not None:
+                    current_subsection_content.append(text)
 
             if hasattr(node, "nodelist") and node.nodelist:
-                _parse_meta_in_nodes(node.nodelist, meta)
+                _process_nodes(node.nodelist)
 
-        return meta
+    walker = LatexWalker(latex_file.latex)
+    nodes, _, _ = walker.get_latex_nodes()
+    _process_nodes(nodes)
 
-    meta = _parse_meta_in_nodes(nodes, meta)
+    if current_subsection is not None:
+        current_subsection.content = "\n".join(current_subsection_content)
+        if current_section is None:
+            current_section = SectionNode(title=latex_file.filename, subsections=[])
+        current_section.subsections.append(current_subsection)
 
-    # Also check for a file call "abstract" in case it's referenced.
-    # This is super brittle!
-    for f in files:
-        if f.filename == "abstract.tex":
-            meta.abstract = f.as_text
+    if current_section is not None:
+        sections.append(current_section)
 
-    return meta
+    paper.sections.extend(sections)
+    paper.title = title
+    paper.abstract = abstract
 
 
 @contextmanager
