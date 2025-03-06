@@ -36,6 +36,7 @@ export default function ResearchSidebar({
         {tabs.map((tab) => (
           <div
             key={tab.id}
+            title={tab.title}
             className={`
               relative group px-4 py-3 cursor-pointer border-l-4 flex items-center justify-between
               ${activeTabID === tab.id
