@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, use } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import QuestionInput from './QuestionInput';
 import TopicList from './TopicList';
 import TopicDetail from './TopicDetail';
@@ -30,10 +30,10 @@ interface ModelOption {
 }
 
 interface ResearcherProps {
-  onLoadingChange?: (isLoading: boolean) => void;
-  onTitleChange?: (title: string) => void;
-  onResearchPaper?: (url: string) => void;
-  tabId?: string;
+  onLoadingChange: (tabId: string, isLoading: boolean) => void;
+  onTitleChange: (tabId: string, title: string) => void;
+  onResearchPaper: (url: string) => void;
+  tabId: string;
   initialUrl?: string;
 }
 
@@ -59,8 +59,6 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
 
   // Load state from localStorage on initial render
   useEffect(() => {
-    if (!tabId) return;
-
     try {
       const savedState = localStorage.getItem(`research-state-${tabId}`);
       if (savedState) {
@@ -76,7 +74,6 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
 
   // Save state to localStorage whenever paperSummary changes
   useEffect(() => {
-    if (!tabId) return;
     try {
       const stateToSave = {
         paperSummary,
@@ -91,28 +88,18 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
     }
   }, [paperSummary, url, selectedModel, tabId]);
 
-  // Only call the callback if the loading state has actually changed. Avoids a loop hitting max depth.
-  // FIXME: Is this the best way to do this?
-  const prevLoadingStateRef = useRef<boolean | null>(null);
+  // Changes to loading and title must propagate to container tabs.
   useEffect(() => {
-    const currentLoadingState = isLoading;
-    if (prevLoadingStateRef.current !== currentLoadingState) {
-      onLoadingChange?.(currentLoadingState);
-      prevLoadingStateRef.current = currentLoadingState;
-    }
-  }, [isLoading, onLoadingChange]);
+    onLoadingChange?.(tabId, isLoading);
+  }, [tabId, isLoading, onLoadingChange]);
 
-  const prevTitleRef = useRef<string | null>(null);
   useEffect(() => {
-    if (paperSummary?.title && paperSummary.title !== prevTitleRef.current) {
-      prevTitleRef.current = paperSummary.title;
-      if (onTitleChange) {
-        onTitleChange(paperSummary.title);
-      }
+    if (paperSummary?.title) {
+      onTitleChange(tabId, paperSummary.title);
     }
-  }, [paperSummary, onTitleChange]);
+  }, [tabId, paperSummary?.title, onTitleChange]);
 
-  const fetchSummary = async (url: string) => {
+  const fetchSummary = useCallback(async (url: string, signal: AbortSignal) => {
     if (!validateUrl(url)) {
       setError('Please enter a valid arXiv URL (e.g. https://arxiv.org/abs/2005.14165)');
       return;
@@ -123,7 +110,7 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
     setPaperSummary(null);
     setSelectedTopic(null);
     setShowAbstract(false);
-    onTitleChange?.(url);
+    onTitleChange?.(tabId, url);
 
     try {
       const searchParams = new URLSearchParams();
@@ -136,6 +123,7 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: signal,
       });
       const response = await fetchPromise;
       if (!response.ok) {
@@ -145,19 +133,22 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
       setPaperSummary(data);
       setIsLoading(false);
     } catch (error) {
+      if (signal.aborted) {
+        return;
+      }
       console.error('Research error:', error);
       setError('Failed to process the paper. Please try again.');
       setIsLoading(false);
-    } finally {
-      setIsLoading(false);
     }
-  }
+  }, [selectedModel, onTitleChange, tabId]);
 
   useEffect(() => {
+    const abortController = new AbortController();
     if (initialUrl) {
-      fetchSummary(initialUrl);
+      fetchSummary(initialUrl, abortController.signal);
     }
-  }, [initialUrl])
+    return () => abortController.abort();
+  }, [initialUrl, fetchSummary]);
 
 
   return (
@@ -165,7 +156,8 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
       <h1 className="text-3xl font-bold mb-6 text-center">Paper Research Assistant</h1>
       <form onSubmit={(e: React.FormEvent) => {
         e.preventDefault();
-        fetchSummary(url);
+        const abortController = new AbortController();
+        fetchSummary(url, abortController.signal);
       }} className="mb-8">
         <div className="flex gap-2 mb-2">
           <input

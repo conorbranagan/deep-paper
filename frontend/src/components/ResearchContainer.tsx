@@ -82,7 +82,7 @@ export default function ResearchContainer() {
     setActiveTabID(newTab.id);
   };
 
-  const handleLoadingChange = useCallback((isLoading: boolean, tabId: string) => {
+  const handleLoadingChange = useCallback((tabId: string, isLoading: boolean) => {
     setTabs(prevTabs =>
       prevTabs.map(tab =>
         tab.id === tabId ? { ...tab, isLoading } : tab
@@ -90,7 +90,7 @@ export default function ResearchContainer() {
     );
   }, []);
 
-  const handleTitleChange = useCallback((title: string, tabId: string) => {
+  const handleTitleChange = useCallback((tabId: string, title: string) => {
     if (!title) return;
 
     setTabs(prevTabs =>
@@ -147,8 +147,8 @@ export default function ResearchContainer() {
             <Researcher
               key={tab.id}
               tabId={tab.id}
-              onLoadingChange={(isLoading: boolean) => handleLoadingChange(isLoading, tab.id)}
-              onTitleChange={(title: string) => handleTitleChange(title, tab.id)}
+              onLoadingChange={handleLoadingChange}
+              onTitleChange={handleTitleChange}
               onResearchPaper={onResearchPaper}
               initialUrl={tab.initialUrl}
             />
