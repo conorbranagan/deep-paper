@@ -40,6 +40,8 @@ interface ResearcherProps {
 const modelOptions: ModelOption[] = [
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
   { id: 'anthropic/claude-3-7-sonnet-latest', name: 'Claude 3.7 Sonnet' },
+  { id: "anthropic/claude-3-5-sonnet-latest", name: "Claude 3.5 Sonnet" },
+  { id: "anthropic/claude-3-5-haiku-latest", name: "Claude 3.5 Haiku" },
   { id: 'openai/gpt-4o', name: 'GPT-4o' },
 ];
 

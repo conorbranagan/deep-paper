@@ -36,16 +36,21 @@ export default function ResearchContainer() {
   // Save tabs to localStorage whenever they change
   useEffect(() => {
     if (tabs.length > 0) {
-      localStorage.setItem('research-tabs', JSON.stringify(tabs));
+      const finishedTabs = tabs.filter(tab => !tab.isLoading && tab.title).map(tab => ({
+        id: tab.id,
+        title: tab.title,
+      }));
+      localStorage.setItem('research-tabs', JSON.stringify(finishedTabs));
     }
   }, [tabs]);
 
   // Save active tab ID to localStorage whenever it changes
   useEffect(() => {
-    if (activeTabID) {
+    const activeTab = tabs.find(tab => tab.id === activeTabID);
+    if (activeTab && !activeTab.isLoading && activeTab.title) {
       localStorage.setItem('research-active-tab', activeTabID);
     }
-  }, [activeTabID]);
+  }, [tabs, activeTabID]);
 
   const generateTabID = useCallback(() => {
     // Always add to the latest tab number to avoid re-use.
