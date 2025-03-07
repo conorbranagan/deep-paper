@@ -143,75 +143,101 @@ class ResearchCommand(Command):
             default=settings.DEFAULT_MODEL,
             help="Model to use for research",
         )
-        parser.add_argument(
-            "-v", "--verbose", action="store_true", help="Enable verbose output"
-        )
         return parser
 
     def execute(self, args):
         agent_model = settings.agent_model(args.model, 0.2)
-        verbosity = LogLevel.INFO if args.verbose else LogLevel.OFF
         if args.url:
             run_paper_agent(
                 args.url,
                 args.prompt,
                 agent_model,
                 stream=False,
-                verbosity_level=verbosity,
+                verbosity_level=LogLevel.INFO,
             )
         else:
             run_research_agent(
-                args.prompt, agent_model, stream=False, verbosity_level=verbosity
+                args.prompt, agent_model, stream=False, verbosity_level=LogLevel.INFO
             )
 
 
-class IndexCommand(Command):
-    """Command to index papers and run test queries."""
+class PipelineCommand(Command):
+    """Commands for the indexing and querying pipeline."""
 
     @classmethod
     def setup_parser(cls, subparsers):
         parser = subparsers.add_parser(
-            "index", help="Index papers and run test queries"
+            "pipeline", help="Index papers and run test queries"
         )
-        parser.add_argument(
+        subcommands = parser.add_subparsers(
+            dest="pipeline_command", help="Pipeline subcommands"
+        )
+
+        # Index subcommand
+        index_parser = subcommands.add_parser(
+            "index", help="Index papers from a file of arxiv IDs"
+        )
+        index_parser.add_argument(
             "--ids-file",
             "-i",
             type=str,
             default="data/ids.txt",
             help="File containing arxiv ids, one per line",
         )
-        parser.add_argument(
-            "--queries-file",
-            "-q",
-            type=str,
-            default="data/queries.txt",
-            help="File containing queries, one per line",
-        )
-        parser.add_argument(
-            "--top-k",
-            "-k",
-            type=int,
-            default=5,
-            help="Top K results to return for each query",
-        )
-        parser.add_argument(
+        index_parser.add_argument(
             "--embedding",
             "-e",
             choices=["bert", "openai"],
             default="bert",
             help="Embedding function to use",
         )
-        parser.add_argument(
+        index_parser.add_argument(
             "--vector-store",
             "-s",
             choices=["in-memory", "qdrant"],
-            default="in-memory",
+            default="qdrant",
             help="Vector store to use",
         )
+
+        # Query subcommand
+        query_parser = subcommands.add_parser(
+            "query", help="Run test queries against the indexed papers"
+        )
+        query_parser.add_argument(
+            "--queries-file",
+            "-q",
+            type=str,
+            default="data/queries.txt",
+            help="File containing queries, one per line",
+        )
+        query_parser.add_argument(
+            "--top-k",
+            "-k",
+            type=int,
+            default=5,
+            help="Top K results to return for each query",
+        )
+        query_parser.add_argument(
+            "--embedding",
+            "-e",
+            choices=["bert", "openai"],
+            default="bert",
+            help="Embedding function to use",
+        )
+        query_parser.add_argument(
+            "--vector-store",
+            "-s",
+            choices=["in-memory", "qdrant"],
+            default="qdrant",
+            help="Vector store to use",
+        )
+
         return parser
 
     def execute(self, args):
-        chunking_strategy = SectionChunkingStrategy()
+        if not hasattr(args, 'pipeline_command') or args.pipeline_command is None:
+            print("Please specify a subcommand: index or query")
+            return
 
         if args.embedding == "bert":
             embedding_fn = EmbeddingFunction.sbert_mini_lm
@@ -229,6 +255,14 @@ class IndexCommand(Command):
             )
         else:
             raise ValueError(f"Invalid vector store: {args.vector_store}")
+
+        if args.pipeline_command == "index":
+            self._index_papers(args, vector_store)
+        elif args.pipeline_command == "query":
+            self._run_queries(args, vector_store)
+
+    def _index_papers(self, args, vector_store):
+        chunking_strategy = SectionChunkingStrategy()
         indexer = PaperIndexer(chunking_strategy, vector_store)
 
         # Load and index papers
@@ -250,6 +284,7 @@ class IndexCommand(Command):
                 except PaperNotFound:
                     print(f"{Fore.RED}Paper not found: {arxiv_id}{Style.RESET_ALL}")
 
+    def _run_queries(self, args, vector_store):
         # Run test queries
         print(f"\n{Fore.CYAN}=== QUERIES ==={Style.RESET_ALL}\n")
         with open(args.queries_file, "r") as f:
@@ -279,7 +314,6 @@ class IndexCommand(Command):
 
             print(f"{Fore.MAGENTA}{'-' * 50}{Style.RESET_ALL}")
 
-
 class CLI:
     """Main CLI class that manages all commands."""
 
@@ -294,7 +328,7 @@ class CLI:
             "parse": ParseCommand(),
             "summarize": SummarizeCommand(),
             "research": ResearchCommand(),
-            "index": IndexCommand(),
+            "pipeline": PipelineCommand(),
         }
 
         # Set up parsers for all commands

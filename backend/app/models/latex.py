@@ -116,7 +116,7 @@ def _inline_latex_includes(
     arxiv_id: str, tex_files: list[LatexTexFile], meta_files: list[LatexMetaFile]
 ) -> list[LatexTexFile]:
     """
-    Read through the tex files and inline all the \input and \include directives
+    Read through the tex files and inline all the input and include directives
     """
     filename_to_tex = {tex_file.filename: tex_file for tex_file in tex_files}
     meta_filenames = {meta_file.filename for meta_file in meta_files}
