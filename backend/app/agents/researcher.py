@@ -1,4 +1,3 @@
-
 from app.models.paper import Paper, PaperNotFound
 
 from smolagents import Tool, CodeAgent
@@ -8,10 +7,15 @@ from langchain.docstore.document import Document
 from langchain_community.retrievers import BM25Retriever
 from langsmith import traceable
 
+from app.pipeline.vector_store import VectorStore, QdrantVectorStore
+from app.pipeline.embedding import EmbeddingFunction
+
 
 class PaperRetriever(Tool):
     name = "paper_retriever"
-    description = "Fetch a paper by the arxiv id and return the contents in LaTeX format"
+    description = (
+        "Fetch a paper by the arxiv id and return the contents in LaTeX format"
+    )
     inputs = {
         "arxiv_id": {
             "type": "string",
@@ -47,15 +51,41 @@ class PaperRetriever(Tool):
         retriever.invoke(query)
         return "\nRetrieved information:\n" + "".join(
             [
-                f"\n\n===== Document {str(i)} =====\n" + doc.page_content
+                f"\n\n===== Document {str(i)} =====\n{doc.page_content}"
                 for i, doc in enumerate(docs)
+            ]
+        )
+
+
+class PaperChunkRetriever(Tool):
+    name = "paper_chunk_retriever"
+    description = "Query across our database of papers for chunk of text that matches a natural language query"
+    inputs = {
+        "query": {
+            "type": "string",
+            "description": "natural language query to search for",
+        },
+    }
+    output_type = "string"
+
+    def __init__(self, vector_store: VectorStore):
+        super().__init__()
+        self.vector_store = vector_store
+
+    def forward(self, query: str) -> str:
+        assert isinstance(query, str), "Your search query must be a string"
+
+        results = self.vector_store.search(query, top_k=10)
+        return "\nRetrieved documents:\n" + "".join(
+            [
+                f"\n\n===== Document {str(i)} =====\n{doc["metadata"]}\n\n{doc["document"]}"
+                for i, doc in enumerate(results)
             ]
         )
 
 
 class CitationRetriever(Tool):
     name = "citation_retriever"
-    description = "Retrieve details of a citation by arxiv id and one or more citation ids. You must have both! Returns the title, author and url"
     inputs = {
         "arxiv_id": {
             "type": "string",
@@ -88,7 +118,7 @@ class CitationRetriever(Tool):
         return resp
 
 
-prompt_tpl = """
+PAPER_PROMPT_TPL = """
 You are researching the paper:
 
 - Arxiv ID: {paper.arxiv_id}
@@ -104,7 +134,7 @@ Please use your available to tools to answer the following prompt.
 
 
 @traceable
-def run(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
+def run_paper_agent(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     paper = Paper.from_url(url)
     agent = CodeAgent(
         tools=[
@@ -116,8 +146,38 @@ def run(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
         verbosity_level=verbosity_level,
     )
 
-    system_prompt = prompt_tpl.format(
+    system_prompt = PAPER_PROMPT_TPL.format(
         paper=paper,
+        prompt=prompt,
+    )
+
+    return agent.run(system_prompt, stream=stream)
+
+
+RESEARCH_PROMPT_TPL = """
+You are supporting a researcher who is using a database of academic papers to answer questions.
+
+Please use your available to tools to answer the following prompt.
+
+{prompt}
+"""
+
+
+@traceable
+def run_research_agent(prompt, model, stream=False, verbosity_level=LogLevel.OFF):
+    vector_store = QdrantVectorStore(
+        embedding_fn=EmbeddingFunction.sbert_mini_lm, collection_name="papers"
+    )
+    agent = CodeAgent(
+        tools=[
+            PaperChunkRetriever(vector_store),
+        ],
+        model=model,
+        max_steps=3,
+        verbosity_level=verbosity_level,
+    )
+
+    system_prompt = RESEARCH_PROMPT_TPL.format(
         prompt=prompt,
     )
 
