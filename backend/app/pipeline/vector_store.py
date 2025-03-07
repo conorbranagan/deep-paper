@@ -18,7 +18,7 @@ class VectorStore(ABC):
 
     @abstractmethod
     def add_documents(
-        self, documents: List[str], metadata: List[Dict[str, Any]] = None
+        self, documents: List[str], metadata: List[Dict[str, Any]]
     ) -> None:
         """Add documents to the vector store with optional metadata."""
         pass
@@ -46,7 +46,7 @@ class InMemoryVectorStore(VectorStore):
         self.embedding_fn = embedding_fn
 
     def add_documents(
-        self, documents: List[str], metadata: List[Dict[str, Any]] = None
+        self, documents: List[str], metadata: List[Dict[str, Any]]
     ) -> None:
         """Add documents to the vector store."""
         if metadata is None:
@@ -118,7 +118,7 @@ class QdrantVectorStore(VectorStore):
             )
 
     def add_documents(
-        self, documents: List[str], metadata: List[Dict[str, Any]] = None
+        self, documents: List[str], metadata: List[Dict[str, Any]]
     ) -> None:
         """Add documents to the vector store."""
         points = [
@@ -141,6 +141,8 @@ class QdrantVectorStore(VectorStore):
         )
         results = []
         for point in response.points:
+            if point.payload is None:
+                continue
             results.append(
                 {
                     "document": point.payload["document"],

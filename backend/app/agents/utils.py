@@ -33,4 +33,4 @@ def step_as_json(step) -> dict:
             "content": json.dumps(step),
         }
     else:
-        print("Unknown step type", type(step))
+        raise Exception(f"Unknown step type: {type(step)}")

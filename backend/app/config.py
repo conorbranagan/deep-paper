@@ -20,7 +20,7 @@ class Settings(BaseModel):
     DEFAULT_MODEL: str = "openai/gpt-4o-mini"
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    LANGSMITH_API_KEY: str = os.getenv("LANGSMITH_API_KEY")
+    LANGSMITH_API_KEY: str = os.getenv("LANGSMITH_API_KEY", "")
 
     def agent_model(self, model_name, temperature, **kwargs):
         if model_name.startswith("openai/"):

@@ -56,7 +56,7 @@ class LatexPaper(BaseModel):
     citations: list[Citation]
 
     @classmethod
-    def from_arxiv_id(cls, arxiv_id: int) -> "LatexPaper":
+    def from_arxiv_id(cls, arxiv_id: str) -> "LatexPaper":
         # Fetch the raw tex files and metadata files.
         raw_tex_files, meta_files = _fetch_files(arxiv_id)
 
@@ -97,7 +97,7 @@ class LatexPaper(BaseModel):
                 print(f"  Subsection: {subsection.title}")
 
 
-def _fetch_files(arxiv_id: int) -> tuple[list[LatexTexFile], list[LatexMetaFile]]:
+def _fetch_files(arxiv_id: str) -> tuple[list[LatexTexFile], list[LatexMetaFile]]:
     tex_files = []
     meta_files = []
     with fetch_tar(arxiv_id) as tar:
@@ -197,7 +197,7 @@ def _inline_latex_includes(
     return list(resolved_tex_files.values())
 
 
-def fetch_citations(arxiv_id: int) -> list[Citation]:
+def fetch_citations(arxiv_id: str) -> list[Citation]:
     with fetch_tar(arxiv_id) as tar:
         bib_file_path = None
         for file_path in tar.getnames():
@@ -227,7 +227,7 @@ def fetch_citations(arxiv_id: int) -> list[Citation]:
 
 
 @contextmanager
-def fetch_tar(arxiv_id: int):
+def fetch_tar(arxiv_id: str):
     pathlib.Path(CACHE_PATH).mkdir(parents=True, exist_ok=True)
     cache_filepath = f"{CACHE_PATH}/{arxiv_id}"
     if not os.path.exists(cache_filepath):
@@ -239,10 +239,10 @@ def fetch_tar(arxiv_id: int):
             f.write(response.content)
 
     try:
-        f = tarfile.open(cache_filepath)
-        yield f
+        tar_file = tarfile.open(cache_filepath)
+        yield tar_file
     finally:
-        f.close()
+        tar_file.close()
 
 
 class MetadataParser(latexnodes.LatexNodesVisitor):
@@ -339,7 +339,7 @@ class SectionParser(latexnodes.LatexNodesVisitor):
                 if isinstance(c, latexwalker.LatexCharsNode)
             )
         else:
-            return node.nodeargd.argnlist[2].nodelist[0].chars
+            return str(node.nodeargd.argnlist[2].nodelist[0].chars)
 
     def _parse_subsection(self, node: latexwalker.LatexMacroNode) -> str:
         name_node = node.nodeargd.argnlist[2]
@@ -350,7 +350,7 @@ class SectionParser(latexnodes.LatexNodesVisitor):
                 if isinstance(c, latexwalker.LatexCharsNode)
             )
         else:
-            return node.nodeargd.argnlist[2].nodelist[0].chars
+            return str(node.nodeargd.argnlist[2].nodelist[0].chars)
 
     def visit(self, node, **kwargs):
         # Called for all nodes that don't have a specific handler.
@@ -377,7 +377,8 @@ class SectionParser(latexnodes.LatexNodesVisitor):
                 self.current_subsection.content = "\n".join(
                     self.current_subsection_content
                 )
-                self.current_section.subsections.append(self.current_subsection)
+                if self.current_section is not None:
+                    self.current_section.subsections.append(self.current_subsection)
 
             if self.current_section is not None:
                 self.current_section.content = "\n".join(self.current_section_content)

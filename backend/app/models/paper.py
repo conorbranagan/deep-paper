@@ -2,7 +2,6 @@
 import re
 import logging
 import tempfile
-from typing import Optional
 
 # 3p
 import requests
@@ -55,12 +54,15 @@ class Paper(BaseModel):
         self.latex.print_tree()
 
 
-def parse_arxiv_id(url) -> Optional[str]:
+def parse_arxiv_id(url) -> str:
     arxiv_pattern = r"arxiv\.org/abs/(\d+\.\d+)"
     arxiv_match = re.search(arxiv_pattern, url)
     if not arxiv_match:
         raise InvalidPaperURL(url)
-    return arxiv_match.group(1)
+    arxiv_id = arxiv_match.group(1)
+    if not arxiv_id:
+        raise InvalidPaperURL(url)
+    return arxiv_id
 
 
 def fetch_pdf_file(arxiv_id: int) -> PDFFile:
