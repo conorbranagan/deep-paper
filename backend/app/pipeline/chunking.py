@@ -4,7 +4,6 @@ Strategies for chunking papers into pieces for our vector database.
 
 from abc import ABC, abstractmethod
 from app.models.paper import Paper
-from pydantic import BaseModel
 
 
 class ChunkingStrategy(ABC):

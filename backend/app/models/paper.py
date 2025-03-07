@@ -200,7 +200,7 @@ def parse_latex_file(paper: Paper, latex_file: LatexFile) -> None:
                     # We can have cases where the section never starts, this means we have it in the filename.
                     if current_section is None:
                         current_section = SectionNode(
-                            title=latex_file.filename, subsections=[]
+                            title=latex_file.filename, subsections=[], content=""
                         )
                     current_section.subsections.append(current_subsection)
 
@@ -244,9 +244,13 @@ def parse_latex_file(paper: Paper, latex_file: LatexFile) -> None:
                     text = ""
                 if hasattr(node, "nodelist"):
                     try:
-                        text += LatexNodes2Text().nodelist_to_text(node.nodelist).replace("\n", " ")
+                        text += (
+                            LatexNodes2Text()
+                            .nodelist_to_text(node.nodelist)
+                            .replace("\n", " ")
+                        )
                     except Exception:
-                       text += ""
+                        text += ""
                 if current_section is not None:
                     current_section_content.append(text)
                 if current_subsection is not None:
@@ -262,7 +266,9 @@ def parse_latex_file(paper: Paper, latex_file: LatexFile) -> None:
     if current_subsection is not None:
         current_subsection.content = "\n".join(current_subsection_content)
         if current_section is None:
-            current_section = SectionNode(title=latex_file.filename, subsections=[])
+            current_section = SectionNode(
+                title=latex_file.filename, subsections=[], content=""
+            )
         current_section.subsections.append(current_subsection)
 
     if current_section is not None:
