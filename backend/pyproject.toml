@@ -17,6 +17,7 @@ dependencies = [
     "smolagents[transformers]>=1.9.2",
     "sse-starlette>=2.2.1",
     "pymupdf>=1.25.3",
+    "colorama>=0.4.6",
 ]
 
 [dependency-groups]
