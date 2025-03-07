@@ -4,7 +4,8 @@ import litellm
 import json
 import sys
 
-from app.models.paper import Paper, Citation
+from app.models.paper import Paper
+from app.models.latex import Citation
 from app.config import settings
 
 SUMMARIZE_TOPICS_PROMPT = """
@@ -126,6 +127,14 @@ if __name__ == "__main__":
     )
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
+    # Parse paper command
+    summarize_parser = subparsers.add_parser(
+        "parse_paper", help="Just parses a paper and prints the tree"
+    )
+    summarize_parser.add_argument(
+        "-u", "--url", type=str, required=True, help="URL of the paper to summarize"
+    )
+
     # Summarize paper command
     summarize_parser = subparsers.add_parser(
         "summarize_paper", help="Summarize an academic paper"
@@ -165,6 +174,10 @@ if __name__ == "__main__":
             if chunk.choices[0].delta.content:
                 print(chunk.choices[0].delta.content, end="")
         print("\n")
+
+    elif args.command == "parse_paper":
+        paper = Paper.from_url(args.url)
+        paper.print_tree()
 
     elif args.command is None:
         parser.print_help()
