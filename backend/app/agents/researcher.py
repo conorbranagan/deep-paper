@@ -1,16 +1,12 @@
-import argparse
-
-from langsmith import traceable
 
 from app.models.paper import Paper, PaperNotFound
 
-from smolagents import Tool, CodeAgent, LiteLLMModel, TransformersModel
+from smolagents import Tool, CodeAgent
 from smolagents.monitoring import LogLevel
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
 from langchain_community.retrievers import BM25Retriever
-
-from app.config import settings
+from langsmith import traceable
 
 
 class PaperRetriever(Tool):
@@ -96,8 +92,8 @@ prompt_tpl = """
 You are researching the paper:
 
 - Arxiv ID: {paper.arxiv_id}
-- Title: {paper.title}
-- Abstract: {paper.abstract}
+- Title: {paper.latex.title}
+- Abstract: {paper.latex.abstract}
 
 When you are asked to reference other papers cited, you should be sure to fetch or query those papers as well to ensure you have the full context.
 
@@ -126,53 +122,3 @@ def run(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     )
 
     return agent.run(system_prompt, stream=stream)
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="paper researcher")
-    parser.add_argument("url", help="URL for paper (either PDF or Arxiv link)")
-    parser.add_argument("prompt", help="Prompt for researching this paper")
-    parser.add_argument(
-        "-m",
-        "--model",
-        choices=["claude-sonnet", "claude-haiku", "gpt-4o-mini", "local-32b", "local-8b"],
-        default="gpt-4o-mini",
-    )
-    args = parser.parse_args()
-
-    if args.model == "local-32b":
-        model = TransformersModel(
-            model_id="Qwen/Qwen2.5-Coder-32B-Instruct",
-            max_new_tokens=4096,
-            device_map="auto",
-        )
-    elif args.model == "local-8b":
-        model = TransformersModel(
-            model_id="NousResearch/DeepHermes-3-Llama-3-8B-Preview",
-            max_new_tokens=4096,
-            device_map="auto",
-        )
-    elif args.model == "claude-sonnet":
-        model = LiteLLMModel(
-            # 3.7 has lower limits than 3.5, 3.5 should be sufficient
-            "anthropic/claude-3-5-sonnet-latest",
-            temperature=0.2,
-            api_key=settings.ANTHROPIC_API_KEY,
-        )
-    elif args.model == "claude-haiku":
-        model = LiteLLMModel(
-            # 3.7 has lower limits than 3.5, 3.5 should be sufficient
-            "anthropic/claude-3-5-haiku-latest",
-            temperature=0.2,
-            api_key=settings.ANTHROPIC_API_KEY,
-        )
-    elif args.model == "gpt-4o-mini":
-        model = LiteLLMModel(
-            "openai/gpt-4o-mini",
-            temperature=0.2,
-            api_key=settings.OPENAI_API_KEY,
-        )
-    else:
-        raise Exception(f"unknown model: {args.model}")
-
-    run(args.url, args.prompt, model, stream=False, verbosity_level=LogLevel.INFO)

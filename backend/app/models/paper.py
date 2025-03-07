@@ -48,11 +48,8 @@ class Paper(BaseModel):
             latex=latex.LatexPaper.from_arxiv_id(arxiv_id),
         )
 
-    def all_contents(self) -> str:
-        return "\n".join(p for p in self.pdf.pages)
-
     def latex_contents(self) -> str:
-        return "\n".join(f.latex for f in self.latex_files)
+        return self.latex.all_contents
 
     def print_tree(self):
         self.latex.print_tree()
