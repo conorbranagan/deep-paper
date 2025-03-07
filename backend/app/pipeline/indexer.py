@@ -18,6 +18,7 @@ class PaperIndexer:
         chunks = self.chunking_strategy.chunk(paper)
         metadata = [
             {
+                "id": f"{paper.arxiv_id}-{i}",
                 "paper_title": paper.latex.title,
                 "paper_id": paper.arxiv_id,
                 "chunk_idx": i,

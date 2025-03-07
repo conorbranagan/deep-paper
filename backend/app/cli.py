@@ -8,7 +8,7 @@ from app.agents.summarizer import summarize_paper, summarize_topic
 from app.agents.researcher import run as run_researcher
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
-from app.pipeline.vector_store import InMemoryVectorStore
+from app.pipeline.vector_store import InMemoryVectorStore, QdrantVectorStore
 from app.pipeline.embedding import EmbeddingFunction
 from app.config import settings, AVAILABLE_MODELS
 
@@ -192,6 +192,13 @@ class IndexCommand(Command):
             default="bert",
             help="Embedding function to use",
         )
+        parser.add_argument(
+            "--vector-store",
+            "-s",
+            choices=["in-memory", "qdrant"],
+            default="in-memory",
+            help="Vector store to use",
+        )
         return parser
 
     def execute(self, args):
@@ -204,7 +211,12 @@ class IndexCommand(Command):
         else:
             raise ValueError(f"Invalid embedding function: {args.embedding}")
 
-        vector_store = InMemoryVectorStore(embedding_fn=embedding_fn)
+        if args.vector_store == "in-memory":
+            vector_store = InMemoryVectorStore(embedding_fn=embedding_fn)
+        elif args.vector_store == "qdrant":
+            vector_store = QdrantVectorStore(embedding_fn=embedding_fn, collection_name="papers")
+        else:
+            raise ValueError(f"Invalid vector store: {args.vector_store}")
         indexer = PaperIndexer(chunking_strategy, vector_store)
 
         # Load and index papers
