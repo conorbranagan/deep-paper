@@ -62,6 +62,11 @@ async def stream(request: Request):
 @router.get("/api/research/summarize")
 async def summarize(request: Request):
     url = request.query_params.get("url")
+    if not url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must provide url",
+        )
     model = request.query_params.get("model") or settings.DEFAULT_MODEL
     try:
         paper = Paper.from_url(url)
@@ -82,7 +87,17 @@ async def summarize(request: Request):
 @router.get("/api/research/summarize/topic")
 async def summarize_topic(request: Request):
     url = request.query_params.get("url")
+    if not url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must provide url",
+        )
     topic = request.query_params.get("topic")
+    if not topic:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must provide topic",
+        )
     model = request.query_params.get("model") or settings.DEFAULT_MODEL
     try:
         paper = Paper.from_url(url)

@@ -8,7 +8,7 @@ from app.agents.summarizer import summarize_paper, summarize_topic
 from app.agents.researcher import run_paper_agent, run_research_agent
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
-from app.pipeline.vector_store import InMemoryVectorStore, QdrantVectorStore
+from app.pipeline.vector_store import InMemoryVectorStore, QdrantVectorStore, VectorStore
 from app.pipeline.embedding import EmbeddingFunction
 from app.config import settings, AVAILABLE_MODELS
 
@@ -220,6 +220,7 @@ class IndexCommand(Command):
         else:
             raise ValueError(f"Invalid embedding function: {args.embedding}")
 
+        vector_store: VectorStore
         if args.vector_store == "in-memory":
             vector_store = InMemoryVectorStore(embedding_fn=embedding_fn)
         elif args.vector_store == "qdrant":

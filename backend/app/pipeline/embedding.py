@@ -10,7 +10,7 @@ import openai
 
 class EmbeddingFunction:
     @staticmethod
-    def sbert_mini_lm(text: str) -> np.ndarray:
+    def sbert_mini_lm(text: str):
         """Get embeddings using a local BERT model with HuggingFace transformers."""
         # Load model and tokenizer
         tokenizer = AutoTokenizer.from_pretrained(
@@ -29,7 +29,8 @@ class EmbeddingFunction:
             # Use mean pooling to get a single vector for the text
             embeddings = outputs.last_hidden_state.mean(dim=1)
 
-        return embeddings[0].numpy()
+        # Convert to numpy array with explicit type
+        return np.array(embeddings[0].numpy(), dtype=np.float32)
 
     @staticmethod
     def openai_ada_002(text: str) -> np.ndarray:

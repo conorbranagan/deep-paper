@@ -1,7 +1,6 @@
-- [ ] Pull the paper abstract
-- [ ] Gather key topics from a paper
-    These will be buttons in the UI for further exploration
-
+- [x] Pull the paper abstract
+- [x] Gather key topics from a paper. These will be buttons in the UI for further exploration
+- 
 
 /summarize
     Abstract: <...>
@@ -13,3 +12,19 @@
         Summary: <...>
         Citations: <...>
     ]
+
+
+Multi-paper Research
+
+# Embeddings Crawler
+    - Have some listing of papers
+    - Index into remote Qdrant (or local)
+
+# Sample questions:
+
+    ## General Multi-Paper
+        What vendors are usually for hiring data labelers?
+
+    ## Single Topic
+
+

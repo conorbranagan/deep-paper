@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 import litellm
-import json
 
 from app.models.paper import Paper
 from app.models.latex import Citation
