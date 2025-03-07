@@ -9,7 +9,7 @@ from sse_starlette.sse import EventSourceResponse
 from app.agents import researcher
 from app.agents.utils import step_as_json
 from app.models.paper import Paper, InvalidPaperURL, PaperNotFound
-from app.prompts import summarize_paper, summarize_paper_topic
+from backend.app.agents.summarizer import summarize_paper, run
 from app.config import settings
 
 
@@ -96,7 +96,7 @@ async def summarize_topic(request: Request):
         )
 
     async def event_generator():
-        for chunk in summarize_paper_topic(paper, topic, model=model):
+        for chunk in run(paper, topic, model=model):
             if await request.is_disconnected():
                 break
             yield {

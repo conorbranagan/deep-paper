@@ -8,6 +8,13 @@ from smolagents import LiteLLMModel
 
 load_dotenv()
 
+AVAILABLE_MODELS = [
+    "openai/gpt-4o-mini",
+    "anthropic/claude-3-5-sonnet-latest",
+    "anthropic/claude-3-5-haiku-latest",
+    "vertex/gemini-1.5-flash",
+]
+
 
 class Settings(BaseModel):
     DEFAULT_MODEL: str = "openai/gpt-4o-mini"
@@ -27,6 +34,12 @@ class Settings(BaseModel):
                 model_name,
                 temperature=temperature,
                 api_key=self.ANTHROPIC_API_KEY,
+            )
+        elif model_name.startswith("vertex/"):
+            return LiteLLMModel(
+                model_name,
+                temperature=temperature,
+                # TODO: add vertex config
             )
         else:
             raise Exception(f"unhandled model name: {model_name}")

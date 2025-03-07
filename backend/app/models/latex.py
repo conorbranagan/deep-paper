@@ -51,6 +51,7 @@ class Citation(BaseModel):
 class LatexPaper(BaseModel):
     title: str
     abstract: str
+    all_contents: str
     sections: list[SectionNode]
     citations: list[Citation]
 
@@ -80,7 +81,11 @@ class LatexPaper(BaseModel):
             citations = []
 
         return LatexPaper(
-            title=title, abstract=abstract, sections=sections, citations=citations
+            title=title,
+            abstract=abstract,
+            all_contents="\n".join(f.content for f in tex_files),
+            sections=sections,
+            citations=citations,
         )
 
     def print_tree(self):
