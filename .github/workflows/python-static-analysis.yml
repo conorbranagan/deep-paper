@@ -30,4 +30,5 @@ jobs:
         
     - name: Run mypy
       run: |
+        python3 -m pip install types-requests
         mypy --config backend/mypy.ini backend
