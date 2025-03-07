@@ -5,7 +5,7 @@ from colorama import Fore, Style, init as colorama_init
 
 from app.models.paper import Paper, PaperNotFound
 from app.agents.summarizer import summarize_paper, summarize_topic
-from app.agents.researcher import run as run_researcher
+from app.agents.researcher import run_paper_agent, run_research_agent
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
 from app.pipeline.vector_store import InMemoryVectorStore, QdrantVectorStore
@@ -132,10 +132,10 @@ class ResearchCommand(Command):
             "-u",
             "--url",
             type=str,
-            required=True,
-            help="URL for paper (either PDF or Arxiv link)",
+            required=False,
+            help="URL for paper, optional if you want to research a specific paper",
         )
-        parser.add_argument("prompt", help="Prompt for researching this paper")
+        parser.add_argument("prompt", help="Prompt for researching")
         parser.add_argument(
             "-m",
             "--model",
@@ -151,9 +151,18 @@ class ResearchCommand(Command):
     def execute(self, args):
         agent_model = settings.agent_model(args.model, 0.2)
         verbosity = LogLevel.INFO if args.verbose else LogLevel.OFF
-        run_researcher(
-            args.url, args.prompt, agent_model, stream=False, verbosity_level=verbosity
-        )
+        if args.url:
+            run_paper_agent(
+                args.url,
+                args.prompt,
+                agent_model,
+                stream=False,
+                verbosity_level=verbosity,
+            )
+        else:
+            run_research_agent(
+                args.prompt, agent_model, stream=False, verbosity_level=verbosity
+            )
 
 
 class IndexCommand(Command):
@@ -214,7 +223,9 @@ class IndexCommand(Command):
         if args.vector_store == "in-memory":
             vector_store = InMemoryVectorStore(embedding_fn=embedding_fn)
         elif args.vector_store == "qdrant":
-            vector_store = QdrantVectorStore(embedding_fn=embedding_fn, collection_name="papers")
+            vector_store = QdrantVectorStore(
+                embedding_fn=embedding_fn, collection_name="papers"
+            )
         else:
             raise ValueError(f"Invalid vector store: {args.vector_store}")
         indexer = PaperIndexer(chunking_strategy, vector_store)

@@ -58,10 +58,11 @@ def summarize_paper(paper: Paper, model: str = settings.DEFAULT_MODEL) -> PaperS
         .choices[0]
         .message.content
     )
-    try:
-        key_topics = KeyTopics.model_validate_json(topics_response)
-    except json.JSONDecodeError:
-        raise  # TODO
+
+    # FIXME (Conor): This can throw an error if JSON coming back is in valid.
+    # We'll just let it fail for now so we see this occuring.
+    # In practice we can do some retries in case our LLM provider is flaky.
+    key_topics = KeyTopics.model_validate_json(topics_response)
 
     formatted_prompt = SUMMARIZE_PAPER_PROMPT.format(
         paper_contents=paper.latex_contents()
