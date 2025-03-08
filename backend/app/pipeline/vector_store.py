@@ -6,7 +6,6 @@ import logging
 import uuid
 
 # 3p
-import numpy as np
 from qdrant_client import QdrantClient, models as qdrant_models
 from qdrant_client.models import PointStruct
 
