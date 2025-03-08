@@ -155,7 +155,7 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">Paper Research Assistant</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">Paper Review</h1>
       <form onSubmit={(e: React.FormEvent) => {
         e.preventDefault();
         const abortController = new AbortController();
@@ -217,7 +217,16 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
           <h2 className="text-2xl font-bold mb-4">📝 Overview</h2>
           <Card>
             <CardContent className="pt-6">
-              <h2 className="text-3xl font-bold mb-4">{paperSummary.title}</h2>
+              <div className="text-3xl font-bold mb-4">
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-gray-600"
+                >
+                  <h3 className="inline">{paperSummary.title}</h3>
+                </a>
+              </div>
               <h3 className="text-xl font-bold mb-4">Summary</h3>
               <MarkdownRenderer>
                 {paperSummary.summary}

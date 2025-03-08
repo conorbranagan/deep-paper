@@ -8,7 +8,7 @@ from app.agents.summarizer import summarize_paper, summarize_topic
 from app.agents.researcher import run_paper_agent, run_research_agent
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
-from app.pipeline.vector_store import InMemoryVectorStore, QdrantVectorStore, VectorStore
+from app.pipeline.vector_store import QdrantVectorStore, VectorStore
 from app.pipeline.embedding import EmbeddingFunction
 from app.config import settings, AVAILABLE_MODELS
 from ddtrace.llmobs import LLMObs
@@ -196,7 +196,7 @@ class PipelineCommand(Command):
         index_parser.add_argument(
             "--vector-store",
             "-s",
-            choices=["in-memory", "qdrant"],
+            choices=["qdrant"],
             default="qdrant",
             help="Vector store to use",
         )
@@ -229,7 +229,7 @@ class PipelineCommand(Command):
         query_parser.add_argument(
             "--vector-store",
             "-s",
-            choices=["in-memory", "qdrant"],
+            choices=["qdrant"],
             default="qdrant",
             help="Vector store to use",
         )
@@ -249,9 +249,7 @@ class PipelineCommand(Command):
             raise ValueError(f"Invalid embedding function: {args.embedding}")
 
         vector_store: VectorStore
-        if args.vector_store == "in-memory":
-            vector_store = InMemoryVectorStore(embedding_fn=embedding_fn)
-        elif args.vector_store == "qdrant":
+        if args.vector_store == "qdrant":
             vector_store = QdrantVectorStore(
                 embedding_fn=embedding_fn, collection_name="papers"
             )
