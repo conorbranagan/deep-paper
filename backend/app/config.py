@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import litellm
 from smolagents import LiteLLMModel
+from ddtrace.llmobs import LLMObs
+from ddtrace import patch_all
 
 
 load_dotenv()
@@ -54,6 +56,16 @@ def init_config():
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[logging.StreamHandler()],
     )
+
+    LLMObs.enable(
+        ml_app="deep-paper",
+        # api_key="<YOUR_DATADOG_API_KEY>",
+        # site="<YOUR_DATADOG_SITE>",
+        # agentless_enabled=True,
+    )
+
+    # Initialize ddtrace patching
+    patch_all()
 
     # Traces go to Langsmith
     litellm.success_callback = ["langsmith"]

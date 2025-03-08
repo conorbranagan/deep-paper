@@ -2,11 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import research
 
-from ddtrace import patch_all
 from app.config import init_config
 
-# Initialize ddtrace patching
-patch_all()
 
 init_config()
 
