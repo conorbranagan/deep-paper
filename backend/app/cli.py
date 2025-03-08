@@ -11,6 +11,7 @@ from app.pipeline.chunk import SectionChunkingStrategy
 from app.pipeline.vector_store import InMemoryVectorStore, QdrantVectorStore, VectorStore
 from app.pipeline.embedding import EmbeddingFunction
 from app.config import settings, AVAILABLE_MODELS
+from ddtrace.llmobs import LLMObs
 
 from smolagents.monitoring import LogLevel
 
@@ -146,6 +147,7 @@ class ResearchCommand(Command):
         return parser
 
     def execute(self, args):
+        LLMObs.enable(ml_app="deep-paper")
         agent_model = settings.agent_model(args.model, 0.2)
         if args.url:
             run_paper_agent(

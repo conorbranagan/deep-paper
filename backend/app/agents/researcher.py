@@ -5,12 +5,14 @@ from smolagents.monitoring import LogLevel
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
 from langchain_community.retrievers import BM25Retriever
-from langsmith import traceable
 
 from app.pipeline.vector_store import VectorStore, QdrantVectorStore
 from app.pipeline.embedding import EmbeddingFunction
+from app.agents.observability import SmolLLMObs, wrap_llmobs
 
+wrap_llmobs()
 
+@SmolLLMObs.wrapped_tool
 class PaperRetriever(Tool):
     name = "paper_retriever"
     description = (
@@ -37,7 +39,7 @@ class PaperRetriever(Tool):
         if query == "":
             return f"\nPaper Contents in LaTeX\n\n{paper.latex_contents()}"
 
-        source_docs = [Document(c.as_text) for c in paper.contents]
+        source_docs = [Document(c.as_text) for c in paper.latex_contents]
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=500,
             chunk_overlap=50,
@@ -57,6 +59,7 @@ class PaperRetriever(Tool):
         )
 
 
+@SmolLLMObs.wrapped_tool
 class PaperChunkRetriever(Tool):
     name = "paper_chunk_retriever"
     description = "Query across our database of papers for chunk of text that matches a natural language query"
@@ -84,8 +87,10 @@ class PaperChunkRetriever(Tool):
         )
 
 
+@SmolLLMObs.wrapped_tool
 class CitationRetriever(Tool):
     name = "citation_retriever"
+    description = "Retrieve citations for a given paper"
     inputs = {
         "arxiv_id": {
             "type": "string",
@@ -108,7 +113,7 @@ class CitationRetriever(Tool):
         except PaperNotFound:
             return f"Unable to find paper for Arxiv ID {arxiv_id}"
 
-        matching = [c for c in paper.citations if c.id in citation_ids]
+        matching = [c for c in paper.latex.citations if c.id in citation_ids]
         if len(matching) == 0:
             return f"Unable to find citations for Arxiv ID {arxiv_id} and IDs {citation_ids}"
 
@@ -132,8 +137,6 @@ Please use your available to tools to answer the following prompt.
 {prompt}
 """
 
-
-@traceable
 def run_paper_agent(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     paper = Paper.from_url(url)
     agent = CodeAgent(
@@ -163,7 +166,6 @@ Please use your available to tools to answer the following prompt.
 """
 
 
-@traceable
 def run_research_agent(prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     vector_store = QdrantVectorStore(
         embedding_fn=EmbeddingFunction.sbert_mini_lm, collection_name="papers"
