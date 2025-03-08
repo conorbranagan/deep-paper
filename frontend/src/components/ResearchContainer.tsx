@@ -3,12 +3,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Researcher from './Researcher';
 import ResearchSidebar from './ResearchSidebar';
+import ExploreView from './ExploreView';
 import { ResearchTab } from './types';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function ResearchContainer() {
   const [tabs, setTabs] = useState<ResearchTab[]>([]);
-  const [activeTabID, setActiveTabID] = useState<string>('');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeTabID, setActiveTabID] = useState<string>('explore');
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
 
   // Load tabs from localStorage on initial render
   useEffect(() => {
@@ -17,7 +19,7 @@ export default function ResearchContainer() {
     const savedSidebarState = localStorage.getItem('research-sidebar-open');
 
     if (savedSidebarState !== null) {
-      setSidebarOpen(savedSidebarState === 'true');
+      setIsSidebarOpen(savedSidebarState === 'true');
     }
 
     if (savedTabs) {
@@ -41,8 +43,8 @@ export default function ResearchContainer() {
 
   // Save sidebar state to localStorage
   useEffect(() => {
-    localStorage.setItem('research-sidebar-open', String(sidebarOpen));
-  }, [sidebarOpen]);
+    localStorage.setItem('research-sidebar-open', String(isSidebarOpen));
+  }, [isSidebarOpen]);
 
   // Save tabs to localStorage whenever they change
   useEffect(() => {
@@ -90,12 +92,37 @@ export default function ResearchContainer() {
   };
 
   const handleAddTab = () => {
-    const newTab: ResearchTab = {
-      id: generateTabID(),
-      isLoading: false
-    };
-    setTabs(prevTabs => [...prevTabs, newTab]);
-    setActiveTabID(newTab.id);
+    const newTabId = uuidv4();
+    setTabs([...tabs, { id: newTabId, title: '', isLoading: false }]);
+    setActiveTabID(newTabId);
+  };
+
+  const handleDeleteTab = (tabId: string) => {
+    // Remove the tab's research state from localStorage
+    localStorage.removeItem(`research-state-${tabId}`);
+
+    // Update tabs state
+    setTabs(prevTabs => {
+      const newTabs = prevTabs.filter(tab => tab.id !== tabId);
+
+      // If we're deleting the active tab, we need to activate another tab
+      if (tabId === activeTabID && newTabs.length > 0) {
+        // Activate the previous tab, or the first tab if there is no previous tab
+        const deletedTabIndex = prevTabs.findIndex(tab => tab.id === tabId);
+        const newActiveIndex = Math.max(0, deletedTabIndex - 1);
+        setActiveTabID(newTabs[newActiveIndex].id);
+      } else if (newTabs.length === 0) {
+        // If we deleted the last tab, create a new default tab
+        const defaultTab: ResearchTab = {
+          id: 'tab-1',
+          isLoading: false
+        };
+        setActiveTabID('explore');
+        return [defaultTab];
+      }
+
+      return newTabs;
+    });
   };
 
   const handleLoadingChange = useCallback((tabId: string, isLoading: boolean) => {
@@ -116,33 +143,16 @@ export default function ResearchContainer() {
     );
   }, []);
 
-  const handleDeleteTab = useCallback((tabId: string) => {
-    // Remove the tab's research state from localStorage
-    localStorage.removeItem(`research-state-${tabId}`);
+  const handleResearchPaper = (url: string) => {
+    const newTabId = uuidv4();
+    setTabs([...tabs, { id: newTabId, title: '', isLoading: false }]);
+    setActiveTabID(newTabId);
+    // The URL will be passed to the Researcher component
+  };
 
-    // Update tabs state
-    setTabs(prevTabs => {
-      const newTabs = prevTabs.filter(tab => tab.id !== tabId);
-
-      // If we're deleting the active tab, we need to activate another tab
-      if (tabId === activeTabID && newTabs.length > 0) {
-        // Activate the previous tab, or the first tab if there is no previous tab
-        const deletedTabIndex = prevTabs.findIndex(tab => tab.id === tabId);
-        const newActiveIndex = Math.max(0, deletedTabIndex - 1);
-        setActiveTabID(newTabs[newActiveIndex].id);
-      } else if (newTabs.length === 0) {
-        // If we deleted the last tab, create a new default tab
-        const defaultTab: ResearchTab = {
-          id: 'tab-1',
-          isLoading: false
-        };
-        setActiveTabID(defaultTab.id);
-        return [defaultTab];
-      }
-
-      return newTabs;
-    });
-  }, [activeTabID]);
+  const handleExploreClick = () => {
+    setActiveTabID('explore');
+  };
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -152,26 +162,24 @@ export default function ResearchContainer() {
         onTabClick={setActiveTabID}
         onAddTab={handleAddTab}
         onDeleteTab={handleDeleteTab}
-        isOpen={sidebarOpen}
-        setIsOpen={setSidebarOpen}
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+        onExploreClick={handleExploreClick}
       />
 
-      <div className={`flex-1 overflow-y-auto transition-all duration-300 ${!sidebarOpen ? 'ml-0' : ''}`}>
-        {tabs.map(tab => (
-          <div
-            key={tab.id}
-            className={`h-full ${activeTabID === tab.id ? 'block' : 'hidden'}`}
-          >
-            <Researcher
-              key={tab.id}
-              tabId={tab.id}
-              onLoadingChange={handleLoadingChange}
-              onTitleChange={handleTitleChange}
-              onResearchPaper={onResearchPaper}
-              initialUrl={tab.initialUrl}
-            />
-          </div>
-        ))}
+      <div className={`flex-1 overflow-y-auto transition-all duration-300 ${!isSidebarOpen ? 'ml-0' : ''}`}>
+        {activeTabID === 'explore' ? (
+          <ExploreView onResearchPaper={handleResearchPaper} />
+        ) : (
+          <Researcher
+            key={tabs.find(tab => tab.id === activeTabID)?.id}
+            tabId={activeTabID}
+            onLoadingChange={handleLoadingChange}
+            onTitleChange={handleTitleChange}
+            onResearchPaper={onResearchPaper}
+            initialUrl={tabs.find(tab => tab.id === activeTabID)?.initialUrl}
+          />
+        )}
       </div>
     </div>
   );
