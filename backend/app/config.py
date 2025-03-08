@@ -57,15 +57,13 @@ def init_config():
         handlers=[logging.StreamHandler()],
     )
 
-    LLMObs.enable(
-        ml_app="deep-paper",
-        # api_key="<YOUR_DATADOG_API_KEY>",
-        # site="<YOUR_DATADOG_SITE>",
-        # agentless_enabled=True,
-    )
-
-    # Initialize ddtrace patching
-    patch_all()
+    init_dd_obs()
 
     # Traces go to Langsmith
     litellm.success_callback = ["langsmith"]
+
+def init_dd_obs():
+    patch_all()
+
+    # Traces go to Datadog
+    LLMObs.enable(ml_app="deep-paper")
