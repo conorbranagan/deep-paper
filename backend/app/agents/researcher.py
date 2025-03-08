@@ -1,113 +1,18 @@
 from app.models.paper import Paper, PaperNotFound
 
-from smolagents import Tool, CodeAgent, MultiStepAgent, FinalAnswerTool, UserInputTool, GoogleSearchTool, DuckDuckGoSearchTool
-from smolagents.agent_types import AgentText, AgentImage, AgentAudio
+from smolagents import Tool, CodeAgent
 from smolagents.monitoring import LogLevel
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
 from langchain_community.retrievers import BM25Retriever
-from ddtrace.llmobs import LLMObs
 
 from app.pipeline.vector_store import VectorStore, QdrantVectorStore
 from app.pipeline.embedding import EmbeddingFunction
+from app.agents.observability import SmolLLMObs, wrap_llmobs
 
+wrap_llmobs()
 
-def wrap_tool(cls):
-    original_forward = cls.forward
-
-    def wrapped_forward(self, *args, **kwargs):
-        with LLMObs.tool(self.name):
-            tool_meta = {k: v for k, v in kwargs.items()}
-            LLMObs.annotate(metadata=tool_meta)
-            return original_forward(self, *args, **kwargs)
-
-    cls.skip_forward_signature_validation = True
-    cls.forward = wrapped_forward
-
-
-def wrap_agent(cls):
-    original_step = cls.step
-    original_planning_step = cls.planning_step
-    original_final_answer = cls.provide_final_answer
-    original_run = cls.run
-
-    def wrapped_step(self, memory_step):
-        with LLMObs.task(name="action"):
-            res = original_step(self, memory_step)
-            step_meta = memory_step.dict()
-            annotate_args = dict(
-                input_data=step_meta.pop("model_input_messages"),
-                output_data=step_meta.pop("model_output_message"),
-                metadata=step_meta,
-            )
-            LLMObs.annotate(**annotate_args)
-            return res
-
-    def wrapped_planning_step(self, *args, **kwargs):
-        with LLMObs.task(name="planning"):
-            return original_planning_step(self, *args, **kwargs)
-
-    def wrapped_final_answer(self, *args, **kwargs):
-        with LLMObs.task(name="final_answer"):
-            answer = original_final_answer(self, *args, **kwargs)
-            LLMObs.annotate(
-                input_data=args[0] if len(args) > 0 else "",
-                output_data=answer,
-            )
-            return answer
-
-    def wrapped_run(self, *args, **kwargs):
-        llmbos_metadata = {
-            "task": args[0] or kwargs.get("task") or "unset task",
-            "max_steps": kwargs.get("max_steps"),
-            "stream": kwargs.get("stream"),
-            "reset": kwargs.get("reset"),
-            # other options: images, additional_args
-        }
-        is_stream = kwargs.get("stream", False)
-        if is_stream:
-            return _wrapped_run_stream(self, *args, llmbos_metadata=llmbos_metadata, **kwargs)
-        else:
-            # For non-stream we simply return that's provided.
-            with LLMObs.agent("smolagents_agent"):
-                output = original_run(self, *args, **kwargs)
-                LLMObs.annotate(
-                    input_data=llmbos_metadata["task"],
-                    output_data=output,
-                    metadata=llmbos_metadata,
-                )
-                return output
-
-    def _wrapped_run_stream(self, *args, llmbos_metadata, **kwargs):
-        # When it's a stream we have to wrap the generator. We pick the last
-        # value to come out as our potential output and cast it to str if it's a known type.
-        with LLMObs.agent("smolagents_agent"):
-            r_gen = original_run(self, *args, **kwargs)
-            output = "unknown"
-            last_val = None
-            for val in r_gen:
-                last_val = val
-                yield val
-
-            # Handle specific types for now.
-            if last_val and isinstance(last_val, (AgentText, AgentImage, AgentAudio)):
-                output = last_val.to_string()
-                LLMObs.annotate(
-                    input_data=llmbos_metadata["task"],
-                    output_data=output,
-                    metadata=llmbos_metadata,
-                )
-
-    cls.step = wrapped_step
-    cls.planning_step = wrapped_planning_step
-    cls.provide_final_answer = wrapped_final_answer
-    cls.run = wrapped_run
-
-
-wrap_agent(CodeAgent)
-wrap_agent(MultiStepAgent)
-
-
+@SmolLLMObs.wrapped_tool
 class PaperRetriever(Tool):
     name = "paper_retriever"
     description = (
@@ -154,6 +59,7 @@ class PaperRetriever(Tool):
         )
 
 
+@SmolLLMObs.wrapped_tool
 class PaperChunkRetriever(Tool):
     name = "paper_chunk_retriever"
     description = "Query across our database of papers for chunk of text that matches a natural language query"
@@ -181,6 +87,7 @@ class PaperChunkRetriever(Tool):
         )
 
 
+@SmolLLMObs.wrapped_tool
 class CitationRetriever(Tool):
     name = "citation_retriever"
     description = "Retrieve citations for a given paper"
@@ -229,16 +136,6 @@ Please use your available to tools to answer the following prompt.
 
 {prompt}
 """
-
-
-wrap_tool(PaperRetriever)
-wrap_tool(PaperChunkRetriever)
-wrap_tool(CitationRetriever)
-wrap_tool(FinalAnswerTool)
-wrap_tool(UserInputTool)
-wrap_tool(GoogleSearchTool)
-wrap_tool(DuckDuckGoSearchTool)
-
 
 def run_paper_agent(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     paper = Paper.from_url(url)
