@@ -37,7 +37,7 @@ class PaperRetriever(Tool):
         if query == "":
             return f"\nPaper Contents in LaTeX\n\n{paper.latex_contents()}"
 
-        source_docs = [Document(c.as_text) for c in paper.contents]
+        source_docs = [Document(c.as_text) for c in paper.latex_contents]
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=500,
             chunk_overlap=50,
@@ -86,6 +86,7 @@ class PaperChunkRetriever(Tool):
 
 class CitationRetriever(Tool):
     name = "citation_retriever"
+    description = "Retrieve citations for a given paper"
     inputs = {
         "arxiv_id": {
             "type": "string",
@@ -108,7 +109,7 @@ class CitationRetriever(Tool):
         except PaperNotFound:
             return f"Unable to find paper for Arxiv ID {arxiv_id}"
 
-        matching = [c for c in paper.citations if c.id in citation_ids]
+        matching = [c for c in paper.latex.citations if c.id in citation_ids]
         if len(matching) == 0:
             return f"Unable to find citations for Arxiv ID {arxiv_id} and IDs {citation_ids}"
 
