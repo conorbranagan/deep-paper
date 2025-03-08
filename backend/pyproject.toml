@@ -19,6 +19,7 @@ dependencies = [
     "pymupdf>=1.25.3",
     "colorama>=0.4.6",
     "qdrant-client>=1.13.3",
+    "ddtrace>=3.2.1",
 ]
 
 [dependency-groups]
