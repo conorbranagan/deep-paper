@@ -8,11 +8,17 @@ import { ResearchTab } from './types';
 export default function ResearchContainer() {
   const [tabs, setTabs] = useState<ResearchTab[]>([]);
   const [activeTabID, setActiveTabID] = useState<string>('');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Load tabs from localStorage on initial render
   useEffect(() => {
     const savedTabs = localStorage.getItem('research-tabs');
     const savedActiveTabID = localStorage.getItem('research-active-tab');
+    const savedSidebarState = localStorage.getItem('research-sidebar-open');
+
+    if (savedSidebarState !== null) {
+      setSidebarOpen(savedSidebarState === 'true');
+    }
 
     if (savedTabs) {
       try {
@@ -32,6 +38,11 @@ export default function ResearchContainer() {
       initializeDefaultTab();
     }
   }, []);
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    localStorage.setItem('research-sidebar-open', String(sidebarOpen));
+  }, [sidebarOpen]);
 
   // Save tabs to localStorage whenever they change
   useEffect(() => {
@@ -76,7 +87,7 @@ export default function ResearchContainer() {
     };
     setTabs([defaultTab]);
     setActiveTabID(defaultTab.id);
-  }; 
+  };
 
   const handleAddTab = () => {
     const newTab: ResearchTab = {
@@ -141,9 +152,11 @@ export default function ResearchContainer() {
         onTabClick={setActiveTabID}
         onAddTab={handleAddTab}
         onDeleteTab={handleDeleteTab}
+        isOpen={sidebarOpen}
+        setIsOpen={setSidebarOpen}
       />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className={`flex-1 overflow-y-auto transition-all duration-300 ${!sidebarOpen ? 'ml-0' : ''}`}>
         {tabs.map(tab => (
           <div
             key={tab.id}
