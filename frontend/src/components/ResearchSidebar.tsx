@@ -61,12 +61,13 @@ export default function ResearchSidebar({
         onMouseLeave={handleMouseLeave}
       >
         <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="font-semibold">Papers</h2>
+          <h2 className="font-semibold">In Review</h2>
           <Button
             onClick={onAddTab}
             variant="secondary"
-            size="xs"
-            className="cursor-pointer"
+            size="sm"
+            className="cursor-pointer mr-1"
+            title="Add paper"
           >
             <PlusIcon />
           </Button>
