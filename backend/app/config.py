@@ -25,6 +25,10 @@ class Settings(BaseModel):
     LANGSMITH_API_KEY: str = os.getenv("LANGSMITH_API_KEY", "")
     QDRANT_URL: str = os.getenv("QDRANT_URL", "file://" + os.path.join(os.path.dirname(__file__), "data", "qdrant"))
 
+    # Celery config
+    CELERY_BROKER_URL: str = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+    CELERY_RESULT_BACKEND: str = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
+
     def agent_model(self, model_name, temperature, **kwargs):
         if model_name.startswith("openai/"):
             return LiteLLMModel(

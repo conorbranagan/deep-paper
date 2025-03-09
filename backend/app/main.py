@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import research
+from app.routers import research, indexing
 
 from app.config import init_config
 
@@ -19,6 +19,7 @@ app.add_middleware(
 )
 
 app.include_router(research.router, tags=["research"])
+app.include_router(indexing.router, tags=["indexing"])
 
 @app.get("/")
 async def root():
