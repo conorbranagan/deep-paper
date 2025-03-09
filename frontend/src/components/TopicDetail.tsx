@@ -67,7 +67,7 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model, onRes
     if (paperUrl && topic) {
       const encodedUrl = encodeURIComponent(paperUrl);
       const encodedTopic = encodeURIComponent(topic.topic);
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/research/summarize/topic?url=${encodedUrl}&topic=${encodedTopic}&model=${model}`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/research/paper/topic?url=${encodedUrl}&topic=${encodedTopic}&model=${model}`;
       eventSource = new EventSource(apiUrl);
       loadTopicSummary(eventSource);
     }

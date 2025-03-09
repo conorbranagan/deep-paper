@@ -9,10 +9,14 @@ interface ResearchStreamData {
   content: string;
 }
 
+type QueryParams = {
+  [key: string]: string | string[];
+};
+
 interface ResearchStreamProps {
-  url: string;
-  model: string;
-  question?: string;
+  sourceURL: string;
+  queryParams: QueryParams;
+  onComplete?: () => void;
 }
 
 const getContentStyle = (type: string) => {
@@ -37,9 +41,9 @@ const getContentStyle = (type: string) => {
 };
 
 export default function ResearchStream({
-  url,
-  model,
-  question
+  sourceURL,
+  queryParams,
+  onComplete,
 }: ResearchStreamProps) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const [researchStream, setResearchStream] = useState<ResearchStreamData[]>([]);
@@ -54,8 +58,15 @@ export default function ResearchStream({
     };
   }, []);
 
+
   useEffect(() => {
-    if (!question) {
+    if (!isResearching && researchStream.length > 0 && onComplete) {
+      onComplete();
+    }
+  }, [isResearching, researchStream, onComplete]);
+
+  useEffect(() => {
+    if (!sourceURL || !queryParams) {
       return;
     }
 
@@ -63,18 +74,18 @@ export default function ResearchStream({
     setIsResearching(true);
     setResearchStream([]);
     try {
-      const searchParams = new URLSearchParams({
-        url: url,
-        question: question,
-        model: model
+      const searchParams = new URLSearchParams();
+      Object.entries(queryParams).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach(v => searchParams.append(key, v));
+        } else {
+          searchParams.set(key, value);
+        }
       });
-
-      const deepURL = `${process.env.NEXT_PUBLIC_API_URL}/api/research/deep?${searchParams.toString()}`;
-
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
-      eventSourceRef.current = new EventSource(deepURL);
+      eventSourceRef.current = new EventSource(sourceURL + '?' + searchParams.toString());
 
       eventSourceRef.current.onmessage = (event) => {
         try {
@@ -97,7 +108,7 @@ export default function ResearchStream({
             ...prev,
             {
               type: 'error',
-              content: 'Failed to process your research question. Please try again.'
+              content: 'Failed to process your query. Please try again.'
             }
           ]);
           if (eventSourceRef.current) {
@@ -126,7 +137,7 @@ export default function ResearchStream({
       ]);
       setIsResearching(false);
     }
-  }, [question, model, url]);
+  }, [sourceURL, queryParams]);
 
 
   return (
@@ -153,7 +164,7 @@ export default function ResearchStream({
             <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
           </div>
           <div className="ml-3 text-sm text-gray-600">
-            Researching your question...
+            Researching...
           </div>
         </div>
       )}
