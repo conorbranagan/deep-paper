@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { PlusIcon, XIcon, ChevronRightIcon } from 'lucide-react';
+import { PlusIcon, XIcon, ChevronRightIcon, SearchIcon, NotepadTextIcon } from 'lucide-react';
 import { ResearchTab } from './types';
 
 interface ResearchSidebarProps {
@@ -11,6 +11,7 @@ interface ResearchSidebarProps {
   onDeleteTab: (tabId: string) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  onExploreClick: () => void;
 }
 
 export default function ResearchSidebar({
@@ -20,7 +21,8 @@ export default function ResearchSidebar({
   onAddTab,
   onDeleteTab,
   isOpen,
-  setIsOpen
+  setIsOpen,
+  onExploreClick
 }: ResearchSidebarProps) {
   const [isHovering, setIsHovering] = useState(false);
 
@@ -54,14 +56,29 @@ export default function ResearchSidebar({
       </button>
 
       <div
-        className={`w-64 bg-gray-100 border-r border-gray-200 flex flex-col h-full transition-all duration-300 ease-in-out ${
-          shouldShow ? 'translate-x-0 opacity-100  shadow-lg' : '-translate-x-full opacity-0'
-        } ${!isOpen ? 'pt-12' : ''}`}
+        className={`w-64 bg-gray-100 border-r border-gray-200 flex flex-col h-full transition-all duration-300 ease-in-out ${shouldShow ? 'translate-x-0 opacity-100  shadow-lg' : '-translate-x-full opacity-0'
+          } ${!isOpen ? 'pt-12' : ''}`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
+        {/* Explore Section */}
+        <div
+          className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors ${activeTabID === 'explore' ? 'bg-blue-50' : ''
+            }`}
+          onClick={onExploreClick}
+        >
+          <div className="flex items-center">
+            <SearchIcon className="h-4 w-4 mr-2" />
+            <h2 className="font-semibold">Explore</h2>
+          </div>
+        </div>
+
+        {/* In Review Section */}
         <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="font-semibold">In Review</h2>
+          <div className="flex items-center">
+          <NotepadTextIcon className="h-4 w-4 mr-2" />
+            <h2 className="font-semibold">In Review</h2>
+          </div>
           <Button
             onClick={onAddTab}
             variant="secondary"

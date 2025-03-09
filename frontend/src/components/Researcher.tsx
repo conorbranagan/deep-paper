@@ -118,7 +118,7 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
       const searchParams = new URLSearchParams();
       searchParams.append('url', url);
       searchParams.append('model', selectedModel);
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/research/summarize?${searchParams.toString()}`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/research/paper/summarize?${searchParams.toString()}`;
 
       const fetchPromise = fetch(apiUrl, {
         method: 'GET',
@@ -293,11 +293,16 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
               disabled={!paperSummary || isLoading}
               placeholder="Ask a research question about this paper..."
             />
-            <ResearchStream
-              url={url}
-              model={selectedModel}
-              question={question}
-            />
+            {question && (
+              <ResearchStream
+                sourceURL={`${process.env.NEXT_PUBLIC_API_URL}/api/research/paper/query`}
+                queryParams={{
+                  paper_url: url,
+                  query: question,
+                  model: selectedModel
+                }}
+              />
+            )}
           </div>
         </div>
       )}

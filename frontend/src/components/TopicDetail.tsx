@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useRef } from 'react';
 import { Card, CardContent } from './ui/card';
 import { ExternalLink, BookOpen } from 'lucide-react';
 import MarkdownRenderer from './ui/markdown';
 import { Topic } from './types';
-
+import { useEventSource } from './utils/EventSourceManager';
 
 interface TopicDetailProps {
   topic: Topic;
@@ -14,70 +14,36 @@ interface TopicDetailProps {
   onResearchPaper?: (url: string) => void;
 }
 
+interface TopicContentMessage {
+  type: string;
+  content: string;
+}
+
 const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model, onResearchPaper }) => {
-  const [topicContent, setTopicContent] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>('');
   const streamEndRef = useRef<HTMLDivElement>(null);
+  
+  const apiUrl = paperUrl && topic ? 
+    `${process.env.NEXT_PUBLIC_API_URL}/api/research/paper/topic` : 
+    null;
+  
+  const queryParams: Record<string, string | string[]> = paperUrl && topic ? {
+    url: paperUrl,
+    topic: topic.topic,
+    model: model
+  } : {};
 
-  const loadTopicSummary = useCallback(
-    async (eventSource: EventSource) => {
-      if (!paperUrl) return;
+  const { messages, status, error } = useEventSource<TopicContentMessage>({
+    url: apiUrl,
+    queryParams,
+  });
 
-      setIsLoading(true);
-      setError('');
-      setTopicContent('');
+  // Combine all content messages into a single string
+  const topicContent = messages
+    .filter(msg => msg.type === 'content')
+    .map(msg => msg.content)
+    .join('');
 
-      try {
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-
-            if (data.type === 'content') {
-              setTopicContent(prev => prev + data.content);
-            } else if (data.type === 'complete') {
-              eventSource.close();
-              setIsLoading(false);
-            } else if (data.type === 'error') {
-              throw new Error(data.content || 'An error occurred');
-            }
-          } catch (error) {
-            console.error('Error parsing stream data:', error);
-            setError('Failed to process topic summary');
-            eventSource.close();
-            setIsLoading(false);
-          }
-        };
-
-        eventSource.onerror = () => {
-          eventSource.close();
-          setIsLoading(false);
-        };
-
-      } catch (error) {
-        console.error('Topic summary error:', error);
-        setError('Failed to load topic summary');
-        setIsLoading(false);
-      }
-    }, [paperUrl]);
-
-  useEffect(() => {
-    let eventSource: EventSource;
-
-    if (paperUrl && topic) {
-      const encodedUrl = encodeURIComponent(paperUrl);
-      const encodedTopic = encodeURIComponent(topic.topic);
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/research/summarize/topic?url=${encodedUrl}&topic=${encodedTopic}&model=${model}`;
-      eventSource = new EventSource(apiUrl);
-      loadTopicSummary(eventSource);
-    }
-
-    return () => {
-      if (eventSource) {
-        eventSource.close();
-      }
-    };
-  }, [paperUrl, topic, model, loadTopicSummary]);
+  const isLoading = status === 'connecting' || status === 'streaming';
 
   const isArxivUrl = (url: string): boolean => {
     return url.startsWith('https://arxiv.org/abs');
@@ -106,7 +72,6 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model, onRes
 
           <div className="prose max-w-none">
             <MarkdownRenderer>{topicContent}</MarkdownRenderer>
-
 
             {isLoading && topicContent.length > 0 && (
               <div className="animate-pulse flex space-x-2 my-2">

@@ -1,18 +1,23 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Card, CardContent } from './ui/card';
 import ResearchStreamItem from './ResearchStreamItem';
+import { useEventSource } from './utils/EventSourceManager';
 
 interface ResearchStreamData {
   type: string;
   content: string;
 }
 
+type QueryParams = {
+  [key: string]: string | string[];
+};
+
 interface ResearchStreamProps {
-  url: string;
-  model: string;
-  question?: string;
+  sourceURL: string;
+  queryParams: QueryParams;
+  onComplete?: () => void;
 }
 
 const getContentStyle = (type: string) => {
@@ -37,104 +42,24 @@ const getContentStyle = (type: string) => {
 };
 
 export default function ResearchStream({
-  url,
-  model,
-  question
+  sourceURL,
+  queryParams,
+  onComplete,
 }: ResearchStreamProps) {
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const [researchStream, setResearchStream] = useState<ResearchStreamData[]>([]);
-  const [isResearching, setIsResearching] = useState<boolean>(false);
+  const { messages, status } = useEventSource<ResearchStreamData>({
+    url: sourceURL,
+    queryParams,
+    onComplete,
+  });
 
-  useEffect(() => {
-    // Clean up function to close EventSource when component unmounts
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!question) {
-      return;
-    }
-
-    // Start researching a document.
-    setIsResearching(true);
-    setResearchStream([]);
-    try {
-      const searchParams = new URLSearchParams({
-        url: url,
-        question: question,
-        model: model
-      });
-
-      const deepURL = `${process.env.NEXT_PUBLIC_API_URL}/api/research/deep?${searchParams.toString()}`;
-
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-      eventSourceRef.current = new EventSource(deepURL);
-
-      eventSourceRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          if (data.type === 'complete') {
-            if (eventSourceRef.current) {
-              eventSourceRef.current.close();
-              eventSourceRef.current = null;
-            }
-            setIsResearching(false);
-          } else if (data.type === 'error') {
-            throw new Error(data.content || 'An error occurred');
-          } else {
-            setResearchStream((prev: ResearchStreamData[]) => [...prev, data]);
-          }
-        } catch (error) {
-          console.error('Error parsing stream data:', error);
-          setResearchStream((prev: ResearchStreamData[]) => [
-            ...prev,
-            {
-              type: 'error',
-              content: 'Failed to process your research question. Please try again.'
-            }
-          ]);
-          if (eventSourceRef.current) {
-            eventSourceRef.current.close();
-            eventSourceRef.current = null;
-          }
-          setIsResearching(false);
-        }
-      };
-
-      eventSourceRef.current.onerror = () => {
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close();
-          eventSourceRef.current = null;
-        }
-        setIsResearching(false);
-      };
-    } catch (error) {
-      console.error('Deep research error:', error);
-      setResearchStream((prev: ResearchStreamData[]) => [
-        ...prev,
-        {
-          type: 'error',
-          content: 'Failed to process your research question. Please try again.'
-        }
-      ]);
-      setIsResearching(false);
-    }
-  }, [question, model, url]);
-
+  const isResearching = status === 'connecting' || status === 'streaming';
 
   return (
     <>
-      {researchStream.length > 0 && (
+      {messages.length > 0 && (
         <Card className="mt-6">
           <CardContent className="pt-6">
-            {researchStream.map((item, index) => (
+            {messages.map((item, index) => (
               <div
                 key={index}
                 className={`border rounded-md p-4 mb-4 ${getContentStyle(item.type)}`}
@@ -153,7 +78,7 @@ export default function ResearchStream({
             <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
           </div>
           <div className="ml-3 text-sm text-gray-600">
-            Researching your question...
+            Researching...
           </div>
         </div>
       )}
