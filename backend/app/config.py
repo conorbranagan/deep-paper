@@ -23,6 +23,7 @@ class Settings(BaseModel):
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     LANGSMITH_API_KEY: str = os.getenv("LANGSMITH_API_KEY", "")
+    QDRANT_URL: str = os.getenv("QDRANT_URL", "file://" + os.path.join(os.path.dirname(__file__), "data", "qdrant"))
 
     def agent_model(self, model_name, temperature, **kwargs):
         if model_name.startswith("openai/"):

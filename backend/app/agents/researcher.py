@@ -6,10 +6,9 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
 from langchain_community.retrievers import BM25Retriever
 
-from app.pipeline.vector_store import VectorStore, QdrantVectorStore
-from app.pipeline.embedding import EmbeddingFunction
+from app.pipeline.vector_store import VectorStore, QdrantVectorStore, QdrantVectorConfig
 from app.agents.observability import SmolLLMObs, wrap_llmobs
-
+from app.config import settings
 wrap_llmobs()
 
 @SmolLLMObs.wrapped_tool
@@ -168,7 +167,8 @@ Please use your available to tools to answer the following prompt.
 
 def run_research_agent(prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     vector_store = QdrantVectorStore(
-        embedding_fn=EmbeddingFunction.sbert_mini_lm, collection_name="papers"
+        url=settings.QDRANT_URL,
+        config=QdrantVectorConfig.bert_384("papers"),
     )
     agent = CodeAgent(
         tools=[

@@ -10,7 +10,7 @@ import openai
 
 class EmbeddingFunction:
     @staticmethod
-    def sbert_mini_lm(text: str):
+    def sbert_mini_lm(text: str) -> list[float]:
         """Get embeddings using a local BERT model with HuggingFace transformers."""
         # Load model and tokenizer
         tokenizer = AutoTokenizer.from_pretrained(
@@ -30,10 +30,10 @@ class EmbeddingFunction:
             embeddings = outputs.last_hidden_state.mean(dim=1)
 
         # Convert to numpy array with explicit type
-        return np.array(embeddings[0].numpy(), dtype=np.float32)
+        return list(np.array(embeddings[0].numpy(), dtype=np.float32))
 
     @staticmethod
-    def openai_ada_002(text: str) -> np.ndarray:
+    def openai_ada_002(text: str) -> list[float]:
         """Get embeddings using OpenAI's API."""
         try:
             response = openai.embeddings.create(
@@ -41,6 +41,6 @@ class EmbeddingFunction:
                 model="text-embedding-ada-002",  # You can change this to a different model if needed
             )
             embedding = response.data[0].embedding
-            return np.array(embedding)
+            return list(np.array(embedding, dtype=np.float32))
         except Exception as e:
             raise e

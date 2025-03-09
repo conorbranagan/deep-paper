@@ -8,8 +8,7 @@ from app.agents.summarizer import summarize_paper, summarize_topic
 from app.agents.researcher import run_paper_agent, run_research_agent
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
-from app.pipeline.vector_store import QdrantVectorStore, VectorStore
-from app.pipeline.embedding import EmbeddingFunction
+from app.pipeline.vector_store import QdrantVectorStore, VectorStore, QdrantVectorConfig
 from app.config import settings, AVAILABLE_MODELS
 from ddtrace.llmobs import LLMObs
 
@@ -241,17 +240,18 @@ class PipelineCommand(Command):
             print("Please specify a subcommand: index or query")
             return
 
-        if args.embedding == "bert":
-            embedding_fn = EmbeddingFunction.sbert_mini_lm
-        elif args.embedding == "openai":
-            embedding_fn = EmbeddingFunction.openai_ada_002
-        else:
-            raise ValueError(f"Invalid embedding function: {args.embedding}")
-
         vector_store: VectorStore
         if args.vector_store == "qdrant":
+            vector_config: QdrantVectorConfig
+            if args.embedding == "bert":
+                vector_config = QdrantVectorConfig.bert_384("papers")
+            elif args.embedding == "openai":
+                vector_config = QdrantVectorConfig.openai_ada_002("papers")
+            else:
+                raise ValueError(f"Invalid embedding function: {args.embedding}")
             vector_store = QdrantVectorStore(
-                embedding_fn=embedding_fn, collection_name="papers"
+                url=settings.QDRANT_URL,
+                config=vector_config,
             )
         else:
             raise ValueError(f"Invalid vector store: {args.vector_store}")
