@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { Card, CardContent } from './ui/card';
 import ResearchStreamItem from './ResearchStreamItem';
+import { useEventSource } from './utils/EventSourceManager';
 
 interface ResearchStreamData {
   type: string;
@@ -45,107 +46,20 @@ export default function ResearchStream({
   queryParams,
   onComplete,
 }: ResearchStreamProps) {
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const [researchStream, setResearchStream] = useState<ResearchStreamData[]>([]);
-  const [isResearching, setIsResearching] = useState<boolean>(false);
+  const { messages, status } = useEventSource<ResearchStreamData>({
+    url: sourceURL,
+    queryParams,
+    onComplete,
+  });
 
-  useEffect(() => {
-    // Clean up function to close EventSource when component unmounts
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-    };
-  }, []);
-
-
-  useEffect(() => {
-    if (!isResearching && researchStream.length > 0 && onComplete) {
-      onComplete();
-    }
-  }, [isResearching, researchStream, onComplete]);
-
-  useEffect(() => {
-    if (!sourceURL || !queryParams) {
-      return;
-    }
-
-    // Start researching a document.
-    setIsResearching(true);
-    setResearchStream([]);
-    try {
-      const searchParams = new URLSearchParams();
-      Object.entries(queryParams).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          value.forEach(v => searchParams.append(key, v));
-        } else {
-          searchParams.set(key, value);
-        }
-      });
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-      eventSourceRef.current = new EventSource(sourceURL + '?' + searchParams.toString());
-
-      eventSourceRef.current.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-
-          if (data.type === 'complete') {
-            if (eventSourceRef.current) {
-              eventSourceRef.current.close();
-              eventSourceRef.current = null;
-            }
-            setIsResearching(false);
-          } else if (data.type === 'error') {
-            throw new Error(data.content || 'An error occurred');
-          } else {
-            setResearchStream((prev: ResearchStreamData[]) => [...prev, data]);
-          }
-        } catch (error) {
-          console.error('Error parsing stream data:', error);
-          setResearchStream((prev: ResearchStreamData[]) => [
-            ...prev,
-            {
-              type: 'error',
-              content: 'Failed to process your query. Please try again.'
-            }
-          ]);
-          if (eventSourceRef.current) {
-            eventSourceRef.current.close();
-            eventSourceRef.current = null;
-          }
-          setIsResearching(false);
-        }
-      };
-
-      eventSourceRef.current.onerror = () => {
-        if (eventSourceRef.current) {
-          eventSourceRef.current.close();
-          eventSourceRef.current = null;
-        }
-        setIsResearching(false);
-      };
-    } catch (error) {
-      console.error('Deep research error:', error);
-      setResearchStream((prev: ResearchStreamData[]) => [
-        ...prev,
-        {
-          type: 'error',
-          content: 'Failed to process your research question. Please try again.'
-        }
-      ]);
-      setIsResearching(false);
-    }
-  }, [sourceURL, queryParams]);
-
+  const isResearching = status === 'connecting' || status === 'streaming';
 
   return (
     <>
-      {researchStream.length > 0 && (
+      {messages.length > 0 && (
         <Card className="mt-6">
           <CardContent className="pt-6">
-            {researchStream.map((item, index) => (
+            {messages.map((item, index) => (
               <div
                 key={index}
                 className={`border rounded-md p-4 mb-4 ${getContentStyle(item.type)}`}

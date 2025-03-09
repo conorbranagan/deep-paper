@@ -143,13 +143,6 @@ export default function ResearchContainer() {
     );
   }, []);
 
-  const handleResearchPaper = (url: string) => {
-    const newTabId = uuidv4();
-    setTabs([...tabs, { id: newTabId, title: '', isLoading: false }]);
-    setActiveTabID(newTabId);
-    // The URL will be passed to the Researcher component
-  };
-
   const handleExploreClick = () => {
     setActiveTabID('explore');
   };
@@ -169,7 +162,7 @@ export default function ResearchContainer() {
 
       <div className={`flex-1 overflow-y-auto transition-all duration-300 ${!isSidebarOpen ? 'ml-0' : ''}`}>
         {activeTabID === 'explore' ? (
-          <ExploreView onResearchPaper={handleResearchPaper} />
+          <ExploreView />
         ) : (
           <Researcher
             key={tabs.find(tab => tab.id === activeTabID)?.id}

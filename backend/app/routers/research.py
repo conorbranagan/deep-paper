@@ -1,6 +1,8 @@
 from dotenv import load_dotenv
-import datetime
 import json
+import asyncio
+import logging
+
 
 from fastapi import APIRouter, HTTPException, Request, status
 from sse_starlette.sse import EventSourceResponse
@@ -10,6 +12,8 @@ from app.agents.utils import step_as_json, is_agent_step
 from app.models.paper import Paper, InvalidPaperURL, PaperNotFound
 from app.config import settings
 
+
+log = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -29,33 +33,30 @@ async def create_event_source_response(request: Request, generator_func):
     """
 
     async def event_generator():
-        for chunk in generator_func:
-            if await request.is_disconnected():
-                break
+        try:
+            for chunk in generator_func:
+                if await request.is_disconnected():
+                    break
 
-            # Handle different types of chunks
-            if is_agent_step(chunk):
-                # Handle agent steps
-                as_json = step_as_json(chunk)
-                # Skip empty content actions
-                if not as_json or not as_json.get("content"):
-                    continue
-                yield {
-                    "event": "message",
-                    "data": json.dumps(as_json),
-                    "id": str(datetime.datetime.now().timestamp()),
-                }
-            elif hasattr(chunk, "choices") and hasattr(chunk.choices[0], "delta"):
-                # Handle streaming LLM response
-                yield {
-                    "event": "message",
-                    "data": json.dumps(
-                        {"type": "content", "content": chunk.choices[0].delta.content}
-                    ),
-                    "id": str(datetime.datetime.now().timestamp()),
-                }
-            else:
-                raise Exception(f"Unknown chunk format: {chunk}")
+                # Handle different types of chunks
+                if is_agent_step(chunk):
+                    as_json = step_as_json(chunk)
+                    # Skip empty content actions
+                    if not as_json or not as_json.get("content"):
+                        continue
+                    yield dict(data=json.dumps(as_json))
+                elif hasattr(chunk, "choices") and hasattr(chunk.choices[0], "delta"):
+                    yield dict(
+                        data=json.dumps(
+                            {"type": "content", "content": chunk.choices[0].delta.content}
+                        )
+                    )
+                else:
+                    yield dict(data=json.dumps(chunk))
+        except asyncio.CancelledError as e:
+            log.info("Disconnected from client (via refresh/close)")
+            # Do any other cleanup, if any
+            raise e
 
     return EventSourceResponse(event_generator())
 
@@ -110,18 +111,19 @@ async def summarize(request: Request):
 @router.get("/api/research/paper/topic")
 async def summarize_topic(request: Request):
     url = request.query_params.get("url")
+    topic = request.query_params.get("topic")
+    model = request.query_params.get("model") or settings.DEFAULT_MODEL
     if not url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Must provide url",
         )
-    topic = request.query_params.get("topic")
     if not topic:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Must provide topic",
         )
-    model = request.query_params.get("model") or settings.DEFAULT_MODEL
+
     try:
         paper = Paper.from_url(url)
     except InvalidPaperURL:
@@ -134,10 +136,8 @@ async def summarize_topic(request: Request):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"no research found for id={id}",
         )
-
-    return await create_event_source_response(
-        request, summarizer.summarize_topic(paper, topic, model=model)
-    )
+    stream = summarizer.summarize_topic(paper, topic, model=model)
+    return await create_event_source_response(request, stream)
 
 
 @router.get("/api/research/explore")

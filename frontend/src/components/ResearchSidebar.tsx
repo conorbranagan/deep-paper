@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { PlusIcon, XIcon, ChevronRightIcon, SearchIcon, NotepadTextIcon } from 'lucide-react';
 import { ResearchTab } from './types';

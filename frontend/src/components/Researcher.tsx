@@ -153,8 +153,6 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
   }, [initialUrl, fetchSummary]);
 
 
-  const paperQueryURL = `${process.env.NEXT_PUBLIC_API_URL}/api/research/paper/query?paper_url=${url}&query=${question}&model=${selectedModel}`;
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">Paper Review</h1>
@@ -297,8 +295,12 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
             />
             {question && (
               <ResearchStream
-                sourceURL={paperQueryURL}
-                queryParams={{ paper_url: url, query: question, model: selectedModel }}
+                sourceURL={`${process.env.NEXT_PUBLIC_API_URL}/api/research/paper/query`}
+                queryParams={{
+                  paper_url: url,
+                  query: question,
+                  model: selectedModel
+                }}
               />
             )}
           </div>

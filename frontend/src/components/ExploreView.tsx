@@ -4,20 +4,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import ResearchStream from './ResearchStream';
 import { Search } from 'lucide-react';
 
-interface Paper {
-  id: string;
-  title: string;
-  authors: string[];
-  url: string;
-  relevance: string;
-  year: string;
-}
 
-interface ExploreViewProps {
-  onResearchPaper: (url: string) => void;
-}
 
-const ExploreView: React.FC<ExploreViewProps> = ({ onResearchPaper }) => {
+export default function ExploreView() {
   const [query, setQuery] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
@@ -60,7 +49,7 @@ const ExploreView: React.FC<ExploreViewProps> = ({ onResearchPaper }) => {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Enter a research question or topic of interest..."
+              placeholder="Ask a question or enter a topic of interest..."
               className="w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
               disabled={hasSearched}
             />
@@ -76,11 +65,9 @@ const ExploreView: React.FC<ExploreViewProps> = ({ onResearchPaper }) => {
         <ResearchStream
           sourceURL={`${process.env.NEXT_PUBLIC_API_URL}/api/research/explore`}
           queryParams={{ query: query, model: "openai/gpt-4o-mini" }}
-          onComplete={() => setIsResearching(false)} 
+          onComplete={() => setIsResearching(false)}
         />
       )}
     </div>
   );
 };
-
-export default ExploreView; 
