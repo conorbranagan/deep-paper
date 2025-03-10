@@ -31,7 +31,7 @@ class PaperRetriever(Tool):
 
     def forward(self, arxiv_id: str, query: str) -> str:
         try:
-            paper = Paper.from_arxvid_id(arxiv_id)
+            paper = Paper.from_arxiv_id(arxiv_id)
         except PaperNotFound:
             return f"Unable to find paper for Arxiv ID {arxiv_id}"
 
@@ -107,7 +107,7 @@ class CitationRetriever(Tool):
         if arxiv_id == "" or len(citation_ids) == 0:
             return "Must provide both arxiv and citation ids"
         try:
-            paper = Paper.from_arxvid_id(arxiv_id)
+            paper = Paper.from_arxiv_id(arxiv_id)
         except PaperNotFound:
             return f"Unable to find paper for Arxiv ID {arxiv_id}"
 

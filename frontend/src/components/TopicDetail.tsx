@@ -6,6 +6,7 @@ import { ExternalLink, BookOpen } from 'lucide-react';
 import MarkdownRenderer from './ui/markdown';
 import { Topic } from './types';
 import { useEventSource } from './utils/EventSourceManager';
+import { makeAPIURL } from './lib/utils';
 
 interface TopicDetailProps {
   topic: Topic;
@@ -21,11 +22,8 @@ interface TopicContentMessage {
 
 const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model, onResearchPaper }) => {
   const streamEndRef = useRef<HTMLDivElement>(null);
-  
-  const apiUrl = paperUrl && topic ? 
-    `${process.env.NEXT_PUBLIC_API_URL}/api/research/paper/topic` : 
-    null;
-  
+
+  const apiUrl = paperUrl && topic ? makeAPIURL(`api/paper/topic`) : null;
   const queryParams: Record<string, string | string[]> = paperUrl && topic ? {
     url: paperUrl,
     topic: topic.topic,

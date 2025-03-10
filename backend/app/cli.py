@@ -6,7 +6,7 @@ from colorama import Fore, Style, init as colorama_init
 from app.models.paper import Paper, PaperNotFound
 from app.agents.summarizer import summarize_paper, summarize_topic
 from app.agents.researcher import run_paper_agent, run_research_agent
-from app.agents.explore import run_explore
+from app.agents.explore import explore_query
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
 from app.pipeline.vector_store import QdrantVectorStore, VectorStore
@@ -145,7 +145,7 @@ class ExploreCommand(Command):
         return parser
 
     def execute(self, args):
-        response = run_explore(args.topic, model=args.model)
+        response = explore_query(args.topic, model=args.model)
         print(f"\nResponse: {response.response}")
         print(f"\nCitations: {response.citations}")
 
@@ -308,7 +308,7 @@ class PipelineCommand(Command):
 
                 print(f"Analyzing paper {arxiv_id}")
                 try:
-                    paper = Paper.from_arxvid_id(arxiv_id)
+                    paper = Paper.from_arxiv_id(arxiv_id)
                     papers.append(paper)
 
                     # Index the paper
@@ -330,9 +330,9 @@ class PipelineCommand(Command):
             if results:
                 print(f"{Fore.YELLOW}Top {len(results)} results:{Style.RESET_ALL}")
                 for i, result in enumerate(results):
-                    paper_id = result["metadata"].get("paper_id", "Unknown")
-                    paper_title = result["metadata"].get("paper_title", "Unknown")
-                    score = result["score"]
+                    paper_id = result.metadata.get("paper_id", "Unknown")
+                    paper_title = result.metadata.get("paper_title", "Unknown")
+                    score = result.score
                     print(
                         f"{Fore.BLUE}{i+1}. Paper ID: {paper_id} (Score: {score:.4f}){Style.RESET_ALL}"
                     )
@@ -340,7 +340,7 @@ class PipelineCommand(Command):
                         f"{Fore.WHITE}   Title: {paper_title} (Score: {score:.4f}){Style.RESET_ALL}"
                     )
                     print(
-                        f"{Fore.WHITE}   Excerpt: {result['document'][:150]}...{Style.RESET_ALL}\n"
+                        f"{Fore.WHITE}   Excerpt: {result.document[:150]}...{Style.RESET_ALL}\n"
                     )
             else:
                 print(f"{Fore.RED}No results found.{Style.RESET_ALL}")

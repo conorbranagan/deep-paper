@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 load_dotenv()
 
-router = APIRouter(prefix="/api/research")
+router = APIRouter(prefix="/api")
 
 
 async def create_event_source_response(request: Request, generator_func):

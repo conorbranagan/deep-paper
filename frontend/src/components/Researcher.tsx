@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from './ui/select';
 import { Topic } from './types';
-
+import { makeAPIURL } from './lib/utils';
 interface PaperSummary {
   title: string;
   abstract: string;
@@ -118,7 +118,7 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
       const searchParams = new URLSearchParams();
       searchParams.append('url', url);
       searchParams.append('model', selectedModel);
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/research/paper/summarize?${searchParams.toString()}`;
+      const apiUrl = makeAPIURL(`api/paper/summarize?${searchParams.toString()}`);
 
       const fetchPromise = fetch(apiUrl, {
         method: 'GET',
@@ -295,7 +295,7 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
             />
             {question && (
               <ResearchStream
-                sourceURL={`${process.env.NEXT_PUBLIC_API_URL}/api/research/paper/query`}
+                sourceURL={makeAPIURL(`api/paper/query`)}
                 queryParams={{
                   paper_url: url,
                   query: question,
