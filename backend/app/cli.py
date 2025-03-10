@@ -6,13 +6,16 @@ from colorama import Fore, Style, init as colorama_init
 from app.models.paper import Paper, PaperNotFound
 from app.agents.summarizer import summarize_paper, summarize_topic
 from app.agents.researcher import run_paper_agent, run_research_agent
+from app.agents.explore import run_explore
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
-from app.pipeline.vector_store import QdrantVectorStore, VectorStore, QdrantVectorConfig
+from app.pipeline.vector_store import QdrantVectorStore, VectorStore
+from app.pipeline.embedding import Embedding, EmbeddingConfig
 from app.config import settings, AVAILABLE_MODELS
 from ddtrace.llmobs import LLMObs
 
 from smolagents.monitoring import LogLevel
+
 
 colorama_init()
 
@@ -120,6 +123,33 @@ class SummarizeCommand(Command):
             print("\n")
 
 
+class ExploreCommand(Command):
+    """Command to analyze and summarize academic papers."""
+
+    @classmethod
+    def setup_parser(cls, subparsers):
+        parser = subparsers.add_parser(
+            "explore", help="Analyze and summarize academic papers"
+        )
+        parser.add_argument(
+            "-t", "--topic", type=str, required=True, help="Topic to focus on"
+        )
+        parser.add_argument(
+            "-m",
+            "--model",
+            choices=AVAILABLE_MODELS,
+            default=settings.DEFAULT_MODEL,
+            help="Model to use for summarization",
+        )
+
+        return parser
+
+    def execute(self, args):
+        response = run_explore(args.topic, model=args.model)
+        print(f"\nResponse: {response.response}")
+        print(f"\nCitations: {response.citations}")
+
+
 class ResearchCommand(Command):
     """Command to research a paper with an AI agent."""
 
@@ -189,7 +219,7 @@ class PipelineCommand(Command):
             "--embedding",
             "-e",
             choices=["bert", "openai"],
-            default="bert",
+            default="openai",
             help="Embedding function to use",
         )
         index_parser.add_argument(
@@ -222,7 +252,7 @@ class PipelineCommand(Command):
             "--embedding",
             "-e",
             choices=["bert", "openai"],
-            default="bert",
+            default="openai",
             help="Embedding function to use",
         )
         query_parser.add_argument(
@@ -236,34 +266,37 @@ class PipelineCommand(Command):
         return parser
 
     def execute(self, args):
-        if not hasattr(args, 'pipeline_command') or args.pipeline_command is None:
+        if not hasattr(args, "pipeline_command") or args.pipeline_command is None:
             print("Please specify a subcommand: index or query")
             return
 
+        embedding_config: EmbeddingConfig
+        if args.embedding == "bert":
+            embedding_config = Embedding.SBERT_MINI_LM
+        elif args.embedding == "openai":
+            embedding_config = Embedding.OPENAI_ADA_002
+        else:
+            raise ValueError(f"Invalid embedding function: {args.embedding}")
+
+
         vector_store: VectorStore
         if args.vector_store == "qdrant":
-            vector_config: QdrantVectorConfig
-            if args.embedding == "bert":
-                vector_config = QdrantVectorConfig.bert_384("papers")
-            elif args.embedding == "openai":
-                vector_config = QdrantVectorConfig.openai_ada_002("papers")
-            else:
-                raise ValueError(f"Invalid embedding function: {args.embedding}")
             vector_store = QdrantVectorStore(
                 url=settings.QDRANT_URL,
-                config=vector_config,
+                collection_name="papers",
+                embedding_config=embedding_config,
             )
         else:
             raise ValueError(f"Invalid vector store: {args.vector_store}")
 
         if args.pipeline_command == "index":
-            self._index_papers(args, vector_store)
+            self._index_papers(args, embedding_config, vector_store)
         elif args.pipeline_command == "query":
             self._run_queries(args, vector_store)
 
-    def _index_papers(self, args, vector_store):
+    def _index_papers(self, args, embedding_config, vector_store):
         chunking_strategy = SectionChunkingStrategy()
-        indexer = PaperIndexer(chunking_strategy, vector_store)
+        indexer = PaperIndexer(chunking_strategy, embedding_config, vector_store)
 
         # Load and index papers
         papers = []
@@ -284,7 +317,7 @@ class PipelineCommand(Command):
                 except PaperNotFound:
                     print(f"{Fore.RED}Paper not found: {arxiv_id}{Style.RESET_ALL}")
 
-    def _run_queries(self, args, vector_store):
+    def _run_queries(self, args, vector_store: VectorStore):
         # Run test queries
         print(f"\n{Fore.CYAN}=== QUERIES ==={Style.RESET_ALL}\n")
         with open(args.queries_file, "r") as f:
@@ -314,6 +347,7 @@ class PipelineCommand(Command):
 
             print(f"{Fore.MAGENTA}{'-' * 50}{Style.RESET_ALL}")
 
+
 class CLI:
     """Main CLI class that manages all commands."""
 
@@ -327,6 +361,7 @@ class CLI:
         self.commands = {
             "parse": ParseCommand(),
             "summarize": SummarizeCommand(),
+            "explore": ExploreCommand(),
             "research": ResearchCommand(),
             "pipeline": PipelineCommand(),
         }

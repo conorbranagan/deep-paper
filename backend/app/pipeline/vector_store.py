@@ -1,6 +1,6 @@
 # stdlib
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import Any
 import logging
 import uuid
 
@@ -9,9 +9,16 @@ from qdrant_client import QdrantClient, models as qdrant_models
 from qdrant_client.models import PointStruct
 from pydantic import BaseModel
 
-from app.pipeline.embedding import EmbeddingFunction
+from app.pipeline.embedding import EmbeddingConfig
+from app.pipeline.chunk import Chunk
 
 log = logging.getLogger(__name__)
+
+
+class VectorResult(BaseModel):
+    document: str
+    metadata: dict[str, Any]
+    score: float
 
 
 class VectorStore(ABC):
@@ -19,54 +26,23 @@ class VectorStore(ABC):
 
     @abstractmethod
     def add_documents(
-        self, documents: list[str], metadata: list[dict[str, Any]]
+        self, chunks: list[Chunk], metadata: list[dict[str, Any]]
     ) -> None:
         """Add documents to the vector store with optional metadata."""
         pass
 
     @abstractmethod
-    def search(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
+    def search(self, query: str, top_k: int = 5) -> list[VectorResult]:
         """Search for documents similar to the query."""
         pass
 
-class QdrantVectorConfig(BaseModel):
-    embedding_fn: Callable[[str], list[float]]
-    vector_params: qdrant_models.VectorParams
-    collection_name: str
-
-    @classmethod
-    def default(cls, collection_name: str):
-        # Currently defaulting to OpenAI because loading BeRT model in prod uses too much memory.
-        return cls.openai_ada_002(collection_name)
-
-    @classmethod
-    def bert_384(cls, collection_name: str):
-        log.info("using openai ada 002 embedding function")
-        return cls(
-            embedding_fn=EmbeddingFunction.sbert_mini_lm,
-            vector_params=qdrant_models.VectorParams(
-                size=384,
-                distance=qdrant_models.Distance.COSINE,
-            ),
-            collection_name=f"{collection_name}-bert-384",
-        )
-    
-    @classmethod
-    def openai_ada_002(cls, collection_name: str):
-        log.info("using openai ada 002 embedding function")
-        return cls(
-            embedding_fn=EmbeddingFunction.openai_ada_002,
-            vector_params=qdrant_models.VectorParams(
-                size=1536,
-                distance=qdrant_models.Distance.COSINE,
-            ),
-            collection_name=f"{collection_name}-openai-ada-002",
-        )
 
 class QdrantVectorStore(VectorStore):
     """Vector store using Qdrant."""
 
-    def __init__(self, url: str, config: QdrantVectorConfig):
+    def __init__(
+        self, url: str, collection_name: str, embedding_config: EmbeddingConfig
+    ):
         """Initialize the Qdrant vector store.
         Supports local file paths (file://path/to/data/qdrant) and remote URLs (host:port)
         """
@@ -78,8 +54,8 @@ class QdrantVectorStore(VectorStore):
             self.client = QdrantClient(host=host, port=int(port))
             log.info("using remote qdrant at %s:%s", host, port)
 
-        self.embedding_fn = config.embedding_fn
-        self.collection_name = config.collection_name
+        self.embedding_fn = embedding_config.embedding_fn
+        self.collection_name = f"{collection_name}-{embedding_config.name}"
 
         # Create the collection if it doesn't exist
         existing_collections = [
@@ -89,24 +65,30 @@ class QdrantVectorStore(VectorStore):
             log.info(f"Creating collection {self.collection_name}")
             self.client.create_collection(
                 self.collection_name,
-                vectors_config=config.vector_params,
+                vectors_config=qdrant_models.VectorParams(
+                    size=embedding_config.size,
+                    distance=qdrant_models.Distance.COSINE,
+                ),
             )
 
     def add_documents(
-        self, documents: list[str], metadata: list[dict[str, Any]]
+        self, chunks: list[Chunk], metadata: list[dict[str, Any]]
     ) -> None:
         """Add documents to the vector store."""
         points = [
             PointStruct(
                 id=str(uuid.uuid4()),
-                vector=self.embedding_fn(doc),
-                payload={"metadata": meta, "document": doc},
+                vector=self.embedding_fn(str(doc)),
+                payload={
+                    "metadata": {"chunk_id": doc.chunk_id, **meta},
+                    "document": doc.text,
+                },
             )
-            for doc, meta in zip(documents, metadata)
+            for doc, meta in zip(chunks, metadata)
         ]
         self.client.upsert(self.collection_name, points)
 
-    def search(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
+    def search(self, query: str, top_k: int = 5) -> list[VectorResult]:
         """Search for documents similar to the query."""
         query_embedding = self.embedding_fn(query)
         response = self.client.query_points(
@@ -119,10 +101,10 @@ class QdrantVectorStore(VectorStore):
             if point.payload is None:
                 continue
             results.append(
-                {
-                    "document": point.payload["document"],
-                    "metadata": point.payload["metadata"],
-                    "score": point.score,
-                }
+                VectorResult(
+                    document=point.payload["document"],
+                    metadata=point.payload["metadata"],
+                    score=point.score,
+                )
             )
         return results

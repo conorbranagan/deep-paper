@@ -405,6 +405,7 @@ dependencies = [
     { name = "requests" },
     { name = "smolagents", extra = ["transformers"] },
     { name = "sse-starlette" },
+    { name = "tiktoken" },
 ]
 
 [package.dev-dependencies]
@@ -433,6 +434,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.3" },
     { name = "smolagents", extras = ["transformers"], specifier = ">=1.9.2" },
     { name = "sse-starlette", specifier = ">=2.2.1" },
+    { name = "tiktoken", specifier = ">=0.9.0" },
 ]
 
 [package.metadata.requires-dev]

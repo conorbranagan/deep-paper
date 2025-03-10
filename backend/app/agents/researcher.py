@@ -5,7 +5,8 @@ from smolagents.monitoring import LogLevel
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.retrievers import BM25Retriever
 
-from app.pipeline.vector_store import VectorStore, QdrantVectorStore, QdrantVectorConfig
+from app.pipeline.vector_store import VectorStore, QdrantVectorStore
+from app.pipeline.embedding import Embedding
 from app.agents.observability import SmolLLMObs, wrap_llmobs
 from app.config import settings
 wrap_llmobs()
@@ -78,7 +79,7 @@ class PaperChunkRetriever(Tool):
         results = self.vector_store.search(query, top_k=10)
         return "\nRetrieved documents:\n" + "".join(
             [
-                f"\n\n===== Document {str(i)} =====\n{doc["metadata"]}\n\n{doc["document"]}"
+                f"\n\n===== Document {str(i)} =====\n{doc.metadata}\n\n{doc.document}"
                 for i, doc in enumerate(results)
             ]
         )
@@ -166,11 +167,13 @@ Please use your available to tools to answer the following prompt.
 def run_research_agent(prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     vector_store = QdrantVectorStore(
         url=settings.QDRANT_URL,
-        config=QdrantVectorConfig.default("papers"),
+        collection_name="papers",
+        embedding_config=Embedding.default(),
     )
     agent = CodeAgent(
         tools=[
             PaperChunkRetriever(vector_store),
+            CitationRetriever(),
         ],
         model=model,
         max_steps=3,
