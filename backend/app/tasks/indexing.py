@@ -32,7 +32,7 @@ def index_paper(self, arxiv_id: str):
 
         # Initialize vector store
         embedding_config = Embedding.default()
-        vector_store = QdrantVectorStore(
+        vector_store = QdrantVectorStore.instance(
             url=settings.QDRANT_URL,
             collection_name="papers",
             embedding_config=embedding_config,

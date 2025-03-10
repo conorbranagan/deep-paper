@@ -94,7 +94,7 @@ async def get_task_status(task_id: str):
 async def sync_index_paper(request: IndexPaperRequest):
     """Synchronous indexing of a paper"""
     embedding_config = Embedding.default()
-    vector_store = QdrantVectorStore(
+    vector_store = QdrantVectorStore.instance(
         url=settings.QDRANT_URL,
         collection_name="papers",
         embedding_config=embedding_config,

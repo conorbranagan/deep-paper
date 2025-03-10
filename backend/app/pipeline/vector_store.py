@@ -40,6 +40,17 @@ class VectorStore(ABC):
 class QdrantVectorStore(VectorStore):
     """Vector store using Qdrant."""
 
+    _instance_by_url: dict[str, "QdrantVectorStore"] = {}
+
+    @classmethod
+    def instance(cls, url: str, collection_name: str, embedding_config: EmbeddingConfig) -> "QdrantVectorStore":
+        """Get the singleton instance of the Qdrant vector store.
+        You should always use this method to avoid multiple connections causing issues.
+        """
+        if url not in cls._instance_by_url:
+            cls._instance_by_url[url] = cls(url, collection_name, embedding_config)
+        return cls._instance_by_url[url]
+
     def __init__(
         self, url: str, collection_name: str, embedding_config: EmbeddingConfig
     ):

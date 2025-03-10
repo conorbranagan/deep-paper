@@ -53,7 +53,7 @@ def explore_query(
     model: str = settings.DEFAULT_MODEL,
     top_k=5,
 ) -> ExploreResponse:
-    vector_store = QdrantVectorStore(
+    vector_store = QdrantVectorStore.instance(
         url=settings.QDRANT_URL,
         collection_name="papers",
         embedding_config=Embedding.default(),

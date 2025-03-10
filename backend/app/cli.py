@@ -281,7 +281,7 @@ class PipelineCommand(Command):
 
         vector_store: VectorStore
         if args.vector_store == "qdrant":
-            vector_store = QdrantVectorStore(
+            vector_store = QdrantVectorStore.instance(
                 url=settings.QDRANT_URL,
                 collection_name="papers",
                 embedding_config=embedding_config,
