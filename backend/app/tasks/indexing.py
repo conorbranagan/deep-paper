@@ -8,7 +8,7 @@ from app.config import settings
 from celery.utils.log import get_task_logger
 
 
-logger = get_task_logger(__name__)
+log = get_task_logger(__name__)
 
 
 @celery_app.task(bind=True, name="index_paper")
@@ -23,14 +23,14 @@ def index_paper(self, arxiv_id: str):
     Returns:
         dict: Status information about the indexing job
     """
-    logger.info(f"Starting indexing job for paper {arxiv_id}")
+    log.info(f"Starting indexing job for paper {arxiv_id}")
 
     try:
         # Update task state to STARTED
         self.update_state(state="STARTED", meta={"arxiv_id": arxiv_id, "progress": 0})
 
         # Initialize vector store
-        vector_config = QdrantVectorConfig.bert_384("papers")
+        vector_config = QdrantVectorConfig.openai_ada_002("papers")
         vector_store = QdrantVectorStore(
             url=settings.QDRANT_URL,
             config=vector_config,
@@ -41,7 +41,7 @@ def index_paper(self, arxiv_id: str):
         indexer = PaperIndexer(chunking_strategy, vector_store)
 
         # Fetch the paper
-        logger.info(f"Fetching paper {arxiv_id}")
+        log.info(f"Fetching paper {arxiv_id}")
         paper = Paper.from_arxvid_id(arxiv_id)
 
         # Update progress
@@ -50,7 +50,7 @@ def index_paper(self, arxiv_id: str):
         )
 
         # Index the paper
-        logger.info(f"Indexing paper {arxiv_id}")
+        log.info(f"Indexing paper {arxiv_id}")
         indexer.index_paper(paper)
 
         # Update progress
@@ -59,7 +59,7 @@ def index_paper(self, arxiv_id: str):
         )
 
         # Return success result
-        logger.info(f"Successfully indexed paper {arxiv_id}")
+        log.info(f"Successfully indexed paper {arxiv_id}")
         return {
             "status": "completed",
             "arxiv_id": arxiv_id,
@@ -72,14 +72,14 @@ def index_paper(self, arxiv_id: str):
         }
 
     except PaperNotFound:
-        logger.error(f"Paper not found: {arxiv_id}")
+        log.error(f"Paper not found: {arxiv_id}")
         return {
             "status": "error",
             "arxiv_id": arxiv_id,
             "error": f"Paper with arxiv ID {arxiv_id} not found",
         }
     except Exception as e:
-        logger.exception(f"Error indexing paper {arxiv_id}: {str(e)}")
+        log.exception(f"Error indexing paper {arxiv_id}: {str(e)}")
         return {"status": "error", "arxiv_id": arxiv_id, "error": str(e)}
 
 
