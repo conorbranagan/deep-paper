@@ -37,10 +37,17 @@ class Paper(BaseModel):
 
     @classmethod
     def from_url(cls, url: str):
-        return cls.from_arxvid_id(parse_arxiv_id(url))
+        arxiv_pattern = r"arxiv\.org/abs/(\d+\.\d+)"
+        arxiv_match = re.search(arxiv_pattern, url)
+        if not arxiv_match:
+            raise InvalidPaperURL(url)
+        arxiv_id = arxiv_match.group(1)
+        if not arxiv_id:
+            raise InvalidPaperURL(url)
+        return cls.from_arxiv_id(arxiv_id)
 
     @classmethod
-    def from_arxvid_id(cls, arxiv_id: str):
+    def from_arxiv_id(cls, arxiv_id: str):
         return Paper(
             arxiv_id=arxiv_id,
             pdf=PDFFile(filename="", pages=[], images=[]),
@@ -52,17 +59,6 @@ class Paper(BaseModel):
 
     def print_tree(self):
         self.latex.print_tree()
-
-
-def parse_arxiv_id(url) -> str:
-    arxiv_pattern = r"arxiv\.org/abs/(\d+\.\d+)"
-    arxiv_match = re.search(arxiv_pattern, url)
-    if not arxiv_match:
-        raise InvalidPaperURL(url)
-    arxiv_id = arxiv_match.group(1)
-    if not arxiv_id:
-        raise InvalidPaperURL(url)
-    return arxiv_id
 
 
 def fetch_pdf_file(arxiv_id: int) -> PDFFile:

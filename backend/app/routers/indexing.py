@@ -4,11 +4,12 @@ from typing import List, Optional
 from celery.result import AsyncResult
 import logging
 from app.tasks.indexing import index_paper, index_papers_batch
-from app.pipeline.vector_store import QdrantVectorConfig, QdrantVectorStore
+from app.pipeline.vector_store import QdrantVectorStore
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
 from app.models.paper import Paper, PaperNotFound
 from app.config import settings
+from app.pipeline.embedding import Embedding
 
 log = logging.getLogger(__name__)
 
@@ -92,19 +93,19 @@ async def get_task_status(task_id: str):
 @router.post("/papers/sync", response_model=IndexPaperResponse)
 async def sync_index_paper(request: IndexPaperRequest):
     """Synchronous indexing of a paper"""
-    vector_config = QdrantVectorConfig.default("papers")
+    embedding_config = Embedding.default()
     vector_store = QdrantVectorStore(
         url=settings.QDRANT_URL,
-        config=vector_config,
+        collection_name="papers",
+        embedding_config=embedding_config,
     )
-
     chunking_strategy = SectionChunkingStrategy()
-    indexer = PaperIndexer(chunking_strategy, vector_store)
+    indexer = PaperIndexer(chunking_strategy, embedding_config, vector_store)
 
     try:
         arxiv_id = request.arxiv_id
         log.info(f"Fetching paper {arxiv_id}")
-        paper = Paper.from_arxvid_id(arxiv_id)
+        paper = Paper.from_arxiv_id(arxiv_id)
     except PaperNotFound:
         raise HTTPException(status_code=404, detail=f"Paper not found: {arxiv_id}")
 

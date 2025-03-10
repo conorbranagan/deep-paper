@@ -27,9 +27,19 @@ END SOURCE DOCUMENTS
 # FIXME: Do we need to use the same citations as provided in the raw lat
 
 
+class Citation(BaseModel):
+    title: str
+    arxiv_id: str
+
+
+class ExplorePromptResponse(BaseModel):
+    response: str
+    citation_ids: list[str]
+
+
 class ExploreResponse(BaseModel):
     response: str
-    citations: list[str]
+    citations: dict[str, Citation]
 
 
 class PaperChunk(BaseModel):
@@ -71,39 +81,20 @@ def run_explore(
             model=model,
             messages=[{"role": "user", "content": formatted_prompt}],
             temperature=0.3,
-            response_format=ExploreResponse,
+            response_format=ExplorePromptResponse,
         )
         .choices[0]
         .message.content
     )
 
-    return ExploreResponse.model_validate_json(llm_response)
+    raw_response = ExplorePromptResponse.model_validate_json(llm_response)
 
-
-SUMMARIZE_PAPER_FOR_TOPIC_PROMPT = """
-{paper_contents}
-
-END PAPER
-
-Explain how this paper covers _specifically_ the topic "{topic}". You do not need to restate the paper name.
-
-Summaries should be no more than 2 paragraphs and must focus on the topic described.
-You may also reference key citations relevant to that topic by Author+Year in the usual format for a paper.
-
-If the topic is not mentioned in the paper return "This topic is not mentioned in this paper".
-"""
-
-
-def summarize_topic(paper: Paper, topic: str, model: str = settings.DEFAULT_MODEL):
-    formatted_prompt = SUMMARIZE_PAPER_FOR_TOPIC_PROMPT.format(
-        topic=topic, paper_contents=paper.latex_contents()
-    )
-    response = litellm.completion(
-        model=model,
-        messages=[{"role": "user", "content": formatted_prompt}],
-        temperature=0.3,
-        stream=True,
-    )
-    for chunk in response:
-        if chunk.choices[0].delta.content is not None:
-            yield chunk
+    citations = {}
+    for citation_id in raw_response.citation_ids:
+        if citation_id not in citations:
+            paper = Paper.from_arxiv_id(citation_id)
+            citations[citation_id] = Citation(
+                title=paper.latex.title,
+                arxiv_id=citation_id,
+            )
+    return ExploreResponse(response=raw_response.response, citations=citations)

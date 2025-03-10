@@ -2,7 +2,8 @@ from app.celery_app import celery_app
 from app.models.paper import Paper, PaperNotFound
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
-from app.pipeline.vector_store import QdrantVectorStore, QdrantVectorConfig
+from app.pipeline.vector_store import QdrantVectorStore
+from app.pipeline.embedding import Embedding
 from app.config import settings
 
 from celery.utils.log import get_task_logger
@@ -30,19 +31,20 @@ def index_paper(self, arxiv_id: str):
         self.update_state(state="STARTED", meta={"arxiv_id": arxiv_id, "progress": 0})
 
         # Initialize vector store
-        vector_config = QdrantVectorConfig.default("papers")
+        embedding_config = Embedding.default()
         vector_store = QdrantVectorStore(
             url=settings.QDRANT_URL,
-            config=vector_config,
+            collection_name="papers",
+            embedding_config=embedding_config,
         )
 
         # Initialize indexer
         chunking_strategy = SectionChunkingStrategy()
-        indexer = PaperIndexer(chunking_strategy, vector_store)
+        indexer = PaperIndexer(chunking_strategy, embedding_config, vector_store)
 
         # Fetch the paper
         log.info(f"Fetching paper {arxiv_id}")
-        paper = Paper.from_arxvid_id(arxiv_id)
+        paper = Paper.from_arxiv_id(arxiv_id)
 
         # Update progress
         self.update_state(
