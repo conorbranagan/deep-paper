@@ -30,7 +30,7 @@ def index_paper(self, arxiv_id: str):
         self.update_state(state="STARTED", meta={"arxiv_id": arxiv_id, "progress": 0})
 
         # Initialize vector store
-        vector_config = QdrantVectorConfig.openai_ada_002("papers")
+        vector_config = QdrantVectorConfig.default("papers")
         vector_store = QdrantVectorStore(
             url=settings.QDRANT_URL,
             config=vector_config,

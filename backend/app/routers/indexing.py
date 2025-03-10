@@ -92,7 +92,7 @@ async def get_task_status(task_id: str):
 @router.post("/papers/sync", response_model=IndexPaperResponse)
 async def sync_index_paper(request: IndexPaperRequest):
     """Synchronous indexing of a paper"""
-    vector_config = QdrantVectorConfig.openai_ada_002("papers")
+    vector_config = QdrantVectorConfig.default("papers")
     vector_store = QdrantVectorStore(
         url=settings.QDRANT_URL,
         config=vector_config,
