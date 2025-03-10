@@ -1,29 +1,10 @@
-from celery import Celery
-from app.config import settings, init_config
+from app.celery_app import celery_app
 from app.tasks.indexing import index_paper, index_papers_batch
 
-# Initialize configuration
-init_config()
+# Register tasks
+celery_app.tasks.register(index_paper)
+celery_app.tasks.register(index_papers_batch)
 
-# Create Celery instance
-celery_app = Celery(
-    "paper_indexer",
-    broker=settings.CELERY_BROKER_URL,
-    backend=settings.CELERY_RESULT_BACKEND,
-    tasks = {
-        "index_paper": index_paper,
-        "index_papers_batch": index_papers_batch,
-    },
-)
-
-# Configure Celery
-celery_app.conf.update(
-    task_serializer="json",
-    accept_content=["json"],
-    result_serializer="json",
-    timezone="UTC",
-    enable_utc=True,
-    task_track_started=True,
-    task_time_limit=300,  # 5 minutes time limit for tasks
-    worker_prefetch_multiplier=1,  # Process one task at a time per worker
-)
+# This is the entry point for the Celery worker
+if __name__ == "__main__":
+    celery_app.start()
