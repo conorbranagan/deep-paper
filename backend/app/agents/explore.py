@@ -48,7 +48,7 @@ class PaperChunk(BaseModel):
     chunk: str
 
 
-def run_explore(
+def explore_query(
     explore_topic: str,
     model: str = settings.DEFAULT_MODEL,
     top_k=5,

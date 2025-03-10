@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, HTTPException, Request, status
 from sse_starlette.sse import EventSourceResponse
 
-from app.agents import researcher, summarizer
+from app.agents import researcher, summarizer, explore
 from app.agents.utils import step_as_json, is_agent_step
 from app.models.paper import Paper, InvalidPaperURL, PaperNotFound
 from app.config import settings
@@ -141,7 +141,7 @@ async def summarize_topic(request: Request):
 
 
 @router.get("/explore")
-async def explore(request: Request):
+async def explore_query(request: Request):
     query = request.query_params.get("query")
     if not query:
         raise HTTPException(
@@ -150,10 +150,4 @@ async def explore(request: Request):
         )
     model = request.query_params.get("model") or settings.DEFAULT_MODEL
 
-    agent_model = settings.agent_model(
-        model,
-        0.2,
-    )
-
-    research_gen = researcher.run_research_agent(query, agent_model, stream=True)
-    return await create_event_source_response(request, research_gen)
+    return explore.explore_query(query, model=model)
