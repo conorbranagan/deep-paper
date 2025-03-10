@@ -5,5 +5,5 @@ builder = "nixpacks"
 providers = ["python"]
 
 [deploy]
-startCommand = "celery -A app.worker.celery_worker worker --loglevel=info --concurrency=4"
+startCommand = "celery -A app.worker.celery_worker worker --concurrency=2 --pool=prefork --prefetch-multiplier=1 --max-memory-per-child=800000 --max-tasks-per-child=100"
 restartPolicyType = "on_failure"
