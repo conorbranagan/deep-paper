@@ -2,8 +2,15 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
 from celery.result import AsyncResult
-
+import logging
 from app.tasks.indexing import index_paper, index_papers_batch
+from app.pipeline.vector_store import QdrantVectorConfig, QdrantVectorStore
+from app.pipeline.indexer import PaperIndexer
+from app.pipeline.chunk import SectionChunkingStrategy
+from app.models.paper import Paper, PaperNotFound
+from app.config import settings
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/indexing")
 
@@ -36,7 +43,7 @@ async def submit_paper_for_indexing(request: IndexPaperRequest):
     try:
         # Queue the indexing task
         task = index_paper.delay(request.arxiv_id)
-        
+
         return IndexPaperResponse(
             task_id=task.id,
             arxiv_id=request.arxiv_id,
@@ -51,7 +58,7 @@ async def submit_papers_batch_for_indexing(request: IndexPaperBatchRequest):
     try:
         # Queue the batch indexing task
         task = index_papers_batch.delay(request.arxiv_ids)
-        
+
         return IndexPaperBatchResponse(
             task_id=task.id,
             arxiv_ids=request.arxiv_ids,
@@ -64,12 +71,12 @@ async def submit_papers_batch_for_indexing(request: IndexPaperBatchRequest):
 async def get_task_status(task_id: str):
     """Get the status of an indexing task"""
     task_result = AsyncResult(task_id)
-    
+
     response = TaskStatusResponse(
         task_id=task_id,
         status=task_result.status,
     )
-    
+
     # Add result or error information if available
     if task_result.successful():
         response.result = task_result.result
@@ -79,5 +86,33 @@ async def get_task_status(task_id: str):
         response.error = str(task_result.result)
     elif task_result.state == 'PROGRESS' and task_result.info:
         response.progress = task_result.info.get('progress', 0)
-    
-    return response 
+
+    return response
+
+@router.post("/papers/sync", response_model=IndexPaperResponse)
+async def sync_index_paper(request: IndexPaperRequest):
+    """Synchronous indexing of a paper"""
+    vector_config = QdrantVectorConfig.default("papers")
+    vector_store = QdrantVectorStore(
+        url=settings.QDRANT_URL,
+        config=vector_config,
+    )
+
+    chunking_strategy = SectionChunkingStrategy()
+    indexer = PaperIndexer(chunking_strategy, vector_store)
+
+    try:
+        arxiv_id = request.arxiv_id
+        log.info(f"Fetching paper {arxiv_id}")
+        paper = Paper.from_arxvid_id(arxiv_id)
+    except PaperNotFound:
+        raise HTTPException(status_code=404, detail=f"Paper not found: {arxiv_id}")
+
+    log.info(f"Indexing paper {arxiv_id}")
+    indexer.index_paper(paper)
+
+    return IndexPaperResponse(
+        task_id="sync",
+        arxiv_id=arxiv_id,
+        status="indexed"
+    )

@@ -6,6 +6,7 @@ from app.pipeline.chunk import ChunkingStrategy
 from app.models.paper import Paper
 from app.pipeline.vector_store import VectorStore
 
+
 class PaperIndexer:
     """Class to index papers using a chunking strategy and vector store."""
 
@@ -26,4 +27,3 @@ class PaperIndexer:
             for i in range(len(chunks))
         ]
         self.vector_store.add_documents(chunks, metadata)
-

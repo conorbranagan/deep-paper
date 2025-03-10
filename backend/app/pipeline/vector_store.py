@@ -35,7 +35,13 @@ class QdrantVectorConfig(BaseModel):
     collection_name: str
 
     @classmethod
+    def default(cls, collection_name: str):
+        # Currently defaulting to OpenAI because loading BeRT model in prod uses too much memory.
+        return cls.openai_ada_002(collection_name)
+
+    @classmethod
     def bert_384(cls, collection_name: str):
+        log.info("using openai ada 002 embedding function")
         return cls(
             embedding_fn=EmbeddingFunction.sbert_mini_lm,
             vector_params=qdrant_models.VectorParams(
@@ -47,6 +53,7 @@ class QdrantVectorConfig(BaseModel):
     
     @classmethod
     def openai_ada_002(cls, collection_name: str):
+        log.info("using openai ada 002 embedding function")
         return cls(
             embedding_fn=EmbeddingFunction.openai_ada_002,
             vector_params=qdrant_models.VectorParams(

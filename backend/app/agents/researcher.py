@@ -168,7 +168,7 @@ Please use your available to tools to answer the following prompt.
 def run_research_agent(prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     vector_store = QdrantVectorStore(
         url=settings.QDRANT_URL,
-        config=QdrantVectorConfig.bert_384("papers"),
+        config=QdrantVectorConfig.default("papers"),
     )
     agent = CodeAgent(
         tools=[

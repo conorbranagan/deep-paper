@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 load_dotenv()
 
-router = APIRouter()
+router = APIRouter(prefix="/api/research")
 
 
 async def create_event_source_response(request: Request, generator_func):
@@ -61,7 +61,7 @@ async def create_event_source_response(request: Request, generator_func):
     return EventSourceResponse(event_generator())
 
 
-@router.get("/api/research/paper/query")
+@router.get("/paper/query")
 async def stream(request: Request):
     paper_url = request.query_params.get("paper_url")
     query = request.query_params.get("query")
@@ -83,7 +83,7 @@ async def stream(request: Request):
     return await create_event_source_response(request, researcher_gen)
 
 
-@router.get("/api/research/paper/summarize")
+@router.get("/paper/summarize")
 async def summarize(request: Request):
     url = request.query_params.get("url")
     if not url:
@@ -108,7 +108,7 @@ async def summarize(request: Request):
     return summarizer.summarize_paper(paper, model=model)
 
 
-@router.get("/api/research/paper/topic")
+@router.get("/paper/topic")
 async def summarize_topic(request: Request):
     url = request.query_params.get("url")
     topic = request.query_params.get("topic")
@@ -140,7 +140,7 @@ async def summarize_topic(request: Request):
     return await create_event_source_response(request, stream)
 
 
-@router.get("/api/research/explore")
+@router.get("/explore")
 async def explore(request: Request):
     query = request.query_params.get("query")
     if not query:

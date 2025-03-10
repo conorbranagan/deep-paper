@@ -51,7 +51,7 @@ export default function ExploreView() {
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Ask a question or enter a topic of interest..."
               className="w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
-              disabled={hasSearched}
+              disabled={isResearching}
             />
             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
               <Search className={`h-5 w-5 ${isResearching ? 'text-gray-400' : 'text-gray-600'}`} />
