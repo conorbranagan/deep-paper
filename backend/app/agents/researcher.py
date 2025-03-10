@@ -3,7 +3,6 @@ from app.models.paper import Paper, PaperNotFound
 from smolagents import Tool, CodeAgent
 from smolagents.monitoring import LogLevel
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.docstore.document import Document
 from langchain_community.retrievers import BM25Retriever
 
 from app.pipeline.vector_store import VectorStore, QdrantVectorStore, QdrantVectorConfig
@@ -38,7 +37,6 @@ class PaperRetriever(Tool):
         if query == "":
             return f"\nPaper Contents in LaTeX\n\n{paper.latex_contents()}"
 
-        source_docs = [Document(c.as_text) for c in paper.latex_contents]
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=500,
             chunk_overlap=50,
@@ -46,14 +44,14 @@ class PaperRetriever(Tool):
             strip_whitespace=True,
             separators=["\n\n", "\n", ".", " ", ""],
         )
-        docs = text_splitter.split_documents(source_docs)
-        retriever = BM25Retriever.from_documents(docs, k=10)
+        chunks = text_splitter.split_text(paper.latex_contents)
+        retriever = BM25Retriever.from_texts(chunks, k=10)
 
         retriever.invoke(query)
         return "\nRetrieved information:\n" + "".join(
             [
-                f"\n\n===== Document {str(i)} =====\n{doc.page_content}"
-                for i, doc in enumerate(docs)
+                f"\n\n===== Chunk {str(i)} =====\n{chunk}"
+                for i, chunk in enumerate(chunks)
             ]
         )
 
