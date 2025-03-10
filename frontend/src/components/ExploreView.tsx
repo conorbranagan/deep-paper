@@ -11,6 +11,7 @@ export default function ExploreView() {
   const [error, setError] = useState<string>('');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
   const [isResearching, setIsResearching] = useState<boolean>(false);
+  const [submittedQuery, setSubmittedQuery] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function ExploreView() {
     }
     setHasSearched(true);
     setIsResearching(true);
+    setSubmittedQuery(query);
   }
 
   return (
@@ -64,7 +66,7 @@ export default function ExploreView() {
       {hasSearched && (
         <ResearchStream
           sourceURL={`${process.env.NEXT_PUBLIC_API_URL}/api/research/explore`}
-          queryParams={{ query: query, model: "openai/gpt-4o-mini" }}
+          queryParams={{ query: submittedQuery, model: "openai/gpt-4o-mini" }}
           onComplete={() => setIsResearching(false)}
         />
       )}
