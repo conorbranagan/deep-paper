@@ -5,5 +5,5 @@ builder = "nixpacks"
 providers = ["python"]
 
 [deploy]
-startCommand = "celery -A app.worker.celery_worker worker --loglevel=info"
+startCommand = "celery -A app.worker.celery_worker worker --loglevel=info --concurrency=4"
 restartPolicyType = "on_failure"
