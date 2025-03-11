@@ -162,7 +162,7 @@ export default function ResearchContainer() {
 
       <div className={`flex-1 overflow-y-auto transition-all duration-300 ${!isSidebarOpen ? 'ml-0' : ''}`}>
         {activeTabID === 'explore' ? (
-          <ExploreView />
+          <ExploreView onResearchPaper={onResearchPaper} />
         ) : (
           <Researcher
             key={tabs.find(tab => tab.id === activeTabID)?.id}

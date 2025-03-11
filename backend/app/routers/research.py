@@ -48,7 +48,10 @@ async def create_event_source_response(request: Request, generator_func):
                 elif hasattr(chunk, "choices") and hasattr(chunk.choices[0], "delta"):
                     yield dict(
                         data=json.dumps(
-                            {"type": "content", "content": chunk.choices[0].delta.content}
+                            {
+                                "type": "content",
+                                "content": chunk.choices[0].delta.content,
+                            }
                         )
                     )
                 else:
@@ -149,5 +152,33 @@ async def explore_query(request: Request):
             detail="Must provide query",
         )
     model = request.query_params.get("model") or settings.DEFAULT_MODEL
+    explore_gen = explore.explore_query(query, model=model)
 
-    return explore.explore_query(query, model=model)
+    async def event_generator():
+        try:
+            for chunk in explore_gen:
+                if await request.is_disconnected():
+                    break
+                if isinstance(chunk, str):
+                    yield dict(data=json.dumps({"type": "content", "content": chunk}))
+                elif isinstance(chunk, explore.PaperChunk):
+                    yield dict(
+                        data=json.dumps(
+                            {
+                                "type": "citation",
+                                "payload": {
+                                    "id": chunk.id,
+                                    "title": chunk.title,
+                                    "arxiv_id": chunk.arxiv_id,
+                                    "section": chunk.section,
+                                    "subsection": chunk.subsection,
+                                },
+                            }
+                        )
+                    )
+        except asyncio.CancelledError as e:
+            log.info("Disconnected from client (via refresh/close)")
+            # Do any other cleanup, if any
+            raise e
+
+    return EventSourceResponse(event_generator())

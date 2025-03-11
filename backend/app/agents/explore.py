@@ -1,15 +1,25 @@
+from typing import Generator
 from pydantic import BaseModel
 import litellm
+import re
+import uuid
+import logging
 
-from app.models.paper import Paper
 from app.config import settings
 from app.pipeline.vector_store import QdrantVectorStore
 from app.pipeline.embedding import Embedding
+
+log = logging.getLogger(__name__)
+
+citation_id_regex = re.compile(
+    r"citation_id:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"
+)
 
 EXPLORE_PROMPT = """
 You are exploring the topic or question: {explore_topic}
 
 You are using the following source documents to answer the question or provide an overview of the topic.
+Each document will have a UUID associated with it that you can reference in your response.
 
 BEGIN SOURCE DOCUMENT
 
@@ -18,14 +28,18 @@ BEGIN SOURCE DOCUMENT
 END SOURCE DOCUMENTS 
 
 - Please describe the topic or answer the question ONLY using the data in source documents.
-- Provide a response in no more than 2 paragraphs.
-- You must inline source cituations by Arxiv ID. 
-- Citations should only appear once in the list of citations.
-- Citations should be in the format of "For instance, BARTScore (2206.05802) estimates factuality by looking at the conditional probability" where "2206.05802" is a paper ID for a citation.
+- You must inline source cituations by Citation ID with the format "(citation_id:<citation_id>)"
+- Give the response a nice headline
+- Then follow it with an answer or overview in 2-3 paragraphs.
+- Use the markdown format for the response.
+
+Here are some examples of valid citations:
+
+    collaborative frameworks involving multiple language models (citation_id:9cbc613d-e047-4c16-9d41-be95014e4f12)
+    the BARTScore metric (citation_id:123e4567-e89b-12d3-a456-426614174000)
+    as described in Google's T5 paper (citation_id:123e4567-e89b-12d3-a456-426614174000)
+    
 """
-
-# FIXME: Do we need to use the same citations as provided in the raw lat
-
 
 class Citation(BaseModel):
     title: str
@@ -43,16 +57,19 @@ class ExploreResponse(BaseModel):
 
 
 class PaperChunk(BaseModel):
+    id: str
     title: str
     arxiv_id: str
     chunk: str
+    section: str
+    subsection: str
 
 
 def explore_query(
     explore_topic: str,
     model: str = settings.DEFAULT_MODEL,
     top_k=5,
-) -> ExploreResponse:
+) -> Generator[str | PaperChunk, None, None]:
     vector_store = QdrantVectorStore.instance(
         url=settings.QDRANT_URL,
         collection_name="papers",
@@ -61,14 +78,21 @@ def explore_query(
     results = vector_store.search(explore_topic, top_k)
     chunks = [
         PaperChunk(
+            id=str(uuid.uuid4()),
             title=r.metadata["paper_title"],
             arxiv_id=r.metadata["paper_id"],
+            section=r.metadata.get("section", ""),
+            subsection=r.metadata.get("subsection", ""),
             chunk=r.document,
         )
         for r in results
     ]
+    chunks_by_id = {c.id: c for c in chunks}
     paper_chunks = "\n".join(
-        [f"Title: {c.title}\nArxiv ID: {c.arxiv_id}\nChunk: {c.chunk}" for c in chunks]
+        [
+            f"Chunk ID: {c.id}\nTitle: {c.title}\nArxiv ID: {c.arxiv_id}\nChunk: {c.chunk}"
+            for c in chunks
+        ]
     )
 
     formatted_prompt = EXPLORE_PROMPT.format(
@@ -76,25 +100,28 @@ def explore_query(
         paper_chunks=paper_chunks,
     )
     print(formatted_prompt)
-    llm_response = (
-        litellm.completion(
-            model=model,
-            messages=[{"role": "user", "content": formatted_prompt}],
-            temperature=0.3,
-            response_format=ExplorePromptResponse,
-        )
-        .choices[0]
-        .message.content
+    response = litellm.completion(
+        model=model,
+        messages=[{"role": "user", "content": formatted_prompt}],
+        temperature=0.3,
+        stream=True,
     )
 
-    raw_response = ExplorePromptResponse.model_validate_json(llm_response)
+    buffer = ""
+    seen_ids = set()
 
-    citations = {}
-    for citation_id in raw_response.citation_ids:
-        if citation_id not in citations:
-            paper = Paper.from_arxiv_id(citation_id)
-            citations[citation_id] = Citation(
-                title=paper.latex.title,
-                arxiv_id=citation_id,
-            )
-    return ExploreResponse(response=raw_response.response, citations=citations)
+    for chunk in response:
+        if chunk.choices[0].delta.content is not None:
+            content = chunk.choices[0].delta.content
+            buffer += content
+            citation_ids = citation_id_regex.findall(buffer)
+            for citation_id in citation_ids:
+                if citation_id not in seen_ids:
+                    seen_ids.add(citation_id)
+                    chunk = chunks_by_id.get(citation_id)
+                    if chunk:
+                        yield chunk
+                    else:
+                        log.warning("Chunk {citation_id} not found in chunks")
+
+            yield content

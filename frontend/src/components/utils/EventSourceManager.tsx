@@ -19,6 +19,7 @@ export interface UseEventSourceProps<T extends EventSourceMessage> {
     queryParams?: Record<string, string | string[]>;
     onComplete?: () => void;
     messageTransformer?: (message: EventSourceMessage) => T;
+    enabled?: boolean;
 }
 
 
@@ -36,6 +37,7 @@ export interface UseEventSourceResult<T extends EventSourceMessage> {
 export function useEventSource<T extends EventSourceMessage>({
     url,
     queryParams = {},
+    enabled = true,
     onComplete,
     messageTransformer = (data) => data as T,
 }: UseEventSourceProps<T>): UseEventSourceResult<T> {
@@ -116,7 +118,7 @@ export function useEventSource<T extends EventSourceMessage>({
     }, [reset]);
 
     useEffect(() => {
-        if (!haveQueryParamsChanged()) {
+        if (!enabled || !haveQueryParamsChanged()) {
             return;
         }
         queryParamsRef.current = queryParams;
@@ -131,7 +133,7 @@ export function useEventSource<T extends EventSourceMessage>({
             Object.entries(queryParams).forEach(([key, value]) => {
                 if (Array.isArray(value)) {
                     value.forEach(v => searchParams.append(key, v));
-                } else {
+                } else if (value) {
                     searchParams.set(key, value);
                 }
             });
@@ -184,7 +186,7 @@ export function useEventSource<T extends EventSourceMessage>({
             setStatus('error');
             closeConnection();
         }
-    }, [url, queryParams, haveQueryParamsChanged, closeConnection, messageTransformer]);
+    }, [url, queryParams, haveQueryParamsChanged, closeConnection, messageTransformer, enabled]);
 
     return {
         messages,

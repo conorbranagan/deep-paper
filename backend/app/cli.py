@@ -6,7 +6,7 @@ from colorama import Fore, Style, init as colorama_init
 from app.models.paper import Paper, PaperNotFound
 from app.agents.summarizer import summarize_paper, summarize_topic
 from app.agents.researcher import run_paper_agent, run_research_agent
-from app.agents.explore import explore_query
+from app.agents.explore import explore_query, PaperChunk
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
 from app.pipeline.vector_store import QdrantVectorStore, VectorStore
@@ -145,9 +145,18 @@ class ExploreCommand(Command):
         return parser
 
     def execute(self, args):
-        response = explore_query(args.topic, model=args.model)
-        print(f"\nResponse: {response.response}")
-        print(f"\nCitations: {response.citations}")
+        citation_chunks = []
+        for chunk in explore_query(args.topic, model=args.model):
+            if isinstance(chunk, str):
+                print(chunk, end="")
+            elif isinstance(chunk, PaperChunk):
+                citation_chunks.append(chunk)
+
+        print("\n\nCitations:")
+        for chunk in citation_chunks:
+            print(f"  - {chunk.title} ({chunk.arxiv_id})")
+            print(f"    Section: {chunk.section}")
+            print(f"    Subsection: {chunk.subsection}")
 
 
 class ResearchCommand(Command):
