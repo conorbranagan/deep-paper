@@ -318,6 +318,9 @@ dependencies = [
     { name = "langchain-community" },
     { name = "langchain-text-splitters" },
     { name = "litellm" },
+    { name = "modal" },
+    { name = "openai" },
+    { name = "pydantic" },
     { name = "pylatexenc" },
     { name = "pymupdf" },
     { name = "qdrant-client" },
@@ -326,6 +329,7 @@ dependencies = [
     { name = "smolagents", extra = ["transformers"] },
     { name = "sse-starlette" },
     { name = "tiktoken" },
+    { name = "torch" },
 ]
 
 [package.dev-dependencies]
@@ -345,6 +349,9 @@ requires-dist = [
     { name = "langchain-community", specifier = ">=0.3.18" },
     { name = "langchain-text-splitters", specifier = ">=0.3.6" },
     { name = "litellm", specifier = ">=1.61.20" },
+    { name = "modal", specifier = ">=0.73.92" },
+    { name = "openai", specifier = ">=1.65.2" },
+    { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pylatexenc", specifier = ">=3.0a32" },
     { name = "pymupdf", specifier = ">=1.25.3" },
     { name = "qdrant-client", specifier = ">=1.13.3" },
@@ -353,6 +360,7 @@ requires-dist = [
     { name = "smolagents", extras = ["transformers"], specifier = ">=1.9.2" },
     { name = "sse-starlette", specifier = ">=2.2.1" },
     { name = "tiktoken", specifier = ">=0.9.0" },
+    { name = "torch", specifier = ">=2.6.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -631,6 +639,16 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/b6/bd/e30fb2b0ce2c0c48caf994b1ebedb56fc7103e26062dd31a41ad1e528eb7/grpcio_tools-1.70.0-cp313-cp313-win32.whl", hash = "sha256:ae139a8d3ddd8353f62af3af018e99ebcd2f4a237bd319cb4b6f58dd608aaa54", size = 946136 },
     { url = "https://files.pythonhosted.org/packages/0f/8a/92aba852bbe2ddf3e44c354b4162b3cf350b810523ffb2d0e5937bd3f249/grpcio_tools-1.70.0-cp313-cp313-win_amd64.whl", hash = "sha256:04bf30c0eb2741defe3ab6e0a6102b022d69cfd39d68fab9b954993ceca8d346", size = 1118147 },
 ]
+
+[[package]]
+name = "grpclib"
+version = "0.4.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "h2" },
+    { name = "multidict" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/79/b9/55936e462a5925190d7427e880b3033601d1effd13809b483d13a926061a/grpclib-0.4.7.tar.gz", hash = "sha256:2988ef57c02b22b7a2e8e961792c41ccf97efc2ace91ae7a5b0de03c363823c3", size = 61254 }
 
 [[package]]
 name = "h11"
@@ -1126,6 +1144,31 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979 },
+]
+
+[[package]]
+name = "modal"
+version = "0.73.92"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "certifi" },
+    { name = "click" },
+    { name = "fastapi" },
+    { name = "grpclib" },
+    { name = "protobuf" },
+    { name = "rich" },
+    { name = "synchronicity" },
+    { name = "toml" },
+    { name = "typer" },
+    { name = "types-certifi" },
+    { name = "types-toml" },
+    { name = "typing-extensions" },
+    { name = "watchfiles" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b1/22/edbde41a3ff6c9e43ed62545d3c1b126d26d72b67581e8b9d74354bfdaf6/modal-0.73.92.tar.gz", hash = "sha256:9fb8d6fa1c42c117e7c911a7b5e14afb07ff0a4005baa323cc2303008b96a2d4", size = 469815 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d8/41/cfebba4e449943fd9ffb7f33e9a3afc54d6f0fb135820433a7abf109b884/modal-0.73.92-py3-none-any.whl", hash = "sha256:5ab5188c2b4fb771563b315dbe0bcecf85b2dbe675f1fb1371e93122648c965d", size = 536055 },
 ]
 
 [[package]]
@@ -2097,6 +2140,18 @@ wheels = [
 ]
 
 [[package]]
+name = "sigtools"
+version = "4.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/5f/db/669ca14166814da187b3087b908ca924cf83f5b504fe23b3859a3ef67d4f/sigtools-4.0.1.tar.gz", hash = "sha256:4b8e135a9cd4d2ea00da670c093372d74e672ba3abb87f4c98d8e73dea54445c", size = 71910 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1f/91/853dbf6ec096197dba9cd5fd0c836c5fc19142038b7db60ebe6332b1bab1/sigtools-4.0.1-py2.py3-none-any.whl", hash = "sha256:d216b4cf920bbab0fce636ddc429ed8463a5b533d9e1492acb45a2a1bc36ac6c", size = 76419 },
+]
+
+[[package]]
 name = "six"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2218,6 +2273,19 @@ wheels = [
 ]
 
 [[package]]
+name = "synchronicity"
+version = "0.9.11"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "sigtools" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b5/52/f34a9ab6d514e0808d0f572affb360411d596b3439107318c00889277dd6/synchronicity-0.9.11.tar.gz", hash = "sha256:cb5dbbcb43d637e516ae50db05a776da51a705d1e1a9c0e301f6049afc3c2cae", size = 50323 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f2/d5/7675cd9b8e18f05b9ea261acad5d197fcb8027d2a65b1a750427ec084593/synchronicity-0.9.11-py3-none-any.whl", hash = "sha256:231129654d2f56b1aa148e85ebd8545231be135771f6d2196d414175b1594ef6", size = 36827 },
+]
+
+[[package]]
 name = "tenacity"
 version = "9.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2273,6 +2341,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/18/07/3e88e65c0ed28fa93aa0c4d264988428eef3df2764c3126dc83e243cb36f/tokenizers-0.21.0-cp39-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:4145505a973116f91bc3ac45988a92e618a6f83eb458f49ea0790df94ee243ff", size = 9357138 },
     { url = "https://files.pythonhosted.org/packages/15/b0/dc4572ca61555fc482ebc933f26cb407c6aceb3dc19c301c68184f8cad03/tokenizers-0.21.0-cp39-abi3-win32.whl", hash = "sha256:eb1702c2f27d25d9dd5b389cc1f2f51813e99f8ca30d9e25348db6585a97e24a", size = 2202266 },
     { url = "https://files.pythonhosted.org/packages/44/69/d21eb253fa91622da25585d362a874fa4710be600f0ea9446d8d0217cec1/tokenizers-0.21.0-cp39-abi3-win_amd64.whl", hash = "sha256:87841da5a25a3a5f70c102de371db120f41873b854ba65e52bccd57df5a3780c", size = 2389192 },
+]
+
+[[package]]
+name = "toml"
+version = "0.10.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/be/ba/1f744cdc819428fc6b5084ec34d9b30660f6f9daaf70eead706e3203ec3c/toml-0.10.2.tar.gz", hash = "sha256:b3bda1d108d5dd99f4a20d24d9c348e91c4db7ab1b749200bded2f839ccbe68f", size = 22253 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/6f/7120676b6d73228c96e17f1f794d8ab046fc910d781c8d151120c3f1569e/toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b", size = 16588 },
 ]
 
 [[package]]
@@ -2388,6 +2465,24 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8b/6f/3991f0f1c7fcb2df31aef28e0594d8d54b05393a0e4e34c65e475c2a5d41/typer-0.15.2.tar.gz", hash = "sha256:ab2fab47533a813c49fe1f16b1a370fd5819099c00b119e0633df65f22144ba5", size = 100711 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7f/fc/5b29fea8cee020515ca82cc68e3b8e1e34bb19a3535ad854cac9257b414c/typer-0.15.2-py3-none-any.whl", hash = "sha256:46a499c6107d645a9c13f7ee46c5d5096cae6f5fc57dd11eccbbb9ae3e44ddfc", size = 45061 },
+]
+
+[[package]]
+name = "types-certifi"
+version = "2021.10.8.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/52/68/943c3aeaf14624712a0357c4a67814dba5cea36d194f5c764dad7959a00c/types-certifi-2021.10.8.3.tar.gz", hash = "sha256:72cf7798d165bc0b76e1c10dd1ea3097c7063c42c21d664523b928e88b554a4f", size = 2095 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b5/63/2463d89481e811f007b0e1cd0a91e52e141b47f9de724d20db7b861dcfec/types_certifi-2021.10.8.3-py3-none-any.whl", hash = "sha256:b2d1e325e69f71f7c78e5943d410e650b4707bb0ef32e4ddf3da37f54176e88a", size = 2136 },
+]
+
+[[package]]
+name = "types-toml"
+version = "0.10.8.20240310"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/86/47/3e4c75042792bff8e90d7991aa5c51812cc668828cc6cce711e97f63a607/types-toml-0.10.8.20240310.tar.gz", hash = "sha256:3d41501302972436a6b8b239c850b26689657e25281b48ff0ec06345b8830331", size = 4392 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/a2/d32ab58c0b216912638b140ab2170ee4b8644067c293b170e19fba340ccc/types_toml-0.10.8.20240310-py3-none-any.whl", hash = "sha256:627b47775d25fa29977d9c70dc0cbab3f314f32c8d8d0c012f2ef5de7aaec05d", size = 4777 },
 ]
 
 [[package]]

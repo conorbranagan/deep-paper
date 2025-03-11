@@ -43,26 +43,41 @@ class QdrantVectorStore(VectorStore):
     _instance_by_url: dict[str, "QdrantVectorStore"] = {}
 
     @classmethod
-    def instance(cls, url: str, collection_name: str, embedding_config: EmbeddingConfig) -> "QdrantVectorStore":
+    def instance(
+        cls,
+        url: str,
+        collection_name: str,
+        embedding_config: EmbeddingConfig,
+        timeout: int = 5,
+    ) -> "QdrantVectorStore":
         """Get the singleton instance of the Qdrant vector store.
         You should always use this method to avoid multiple connections causing issues.
         """
         if url not in cls._instance_by_url:
-            cls._instance_by_url[url] = cls(url, collection_name, embedding_config)
+            cls._instance_by_url[url] = cls(
+                url, collection_name, embedding_config, timeout
+            )
         return cls._instance_by_url[url]
 
     def __init__(
-        self, url: str, collection_name: str, embedding_config: EmbeddingConfig
+        self,
+        url: str,
+        collection_name: str,
+        embedding_config: EmbeddingConfig,
+        timeout: int = 5,
     ):
         """Initialize the Qdrant vector store.
         Supports local file paths (file://path/to/data/qdrant) and remote URLs (host:port)
         """
         if url.startswith("file://"):
-            self.client = QdrantClient(path=url[7:])
+            self.client = QdrantClient(path=url[7:], timeout=timeout)
             log.info("using local qdrant at %s", url[7:])
         else:
             host, port = url.split(":")
-            self.client = QdrantClient(host=host, port=int(port))
+            https = port == "443"
+            self.client = QdrantClient(
+                host=host, port=int(port), timeout=timeout, https=https
+            )
             log.info("using remote qdrant at %s:%s", host, port)
 
         self.embedding_fn = embedding_config.embedding_fn
