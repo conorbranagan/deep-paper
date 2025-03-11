@@ -73,7 +73,6 @@ def explore_query(
     top_k=5,
 ) -> Generator[str | PaperChunk, None, None]:
     vector_store = QdrantVectorStore.instance(
-        url=settings.QDRANT_URL,
         collection_name="papers",
         embedding_config=Embedding.default(),
     )

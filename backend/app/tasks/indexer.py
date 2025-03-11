@@ -10,7 +10,6 @@ from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
 from app.pipeline.embedding import Embedding
 from app.pipeline.vector_store import QdrantVectorStore
-
 log = logging.getLogger(__name__)
 
 deps = [
@@ -41,10 +40,8 @@ image = (
     .pip_install(deps)
     .env(
         dict(
-            # Disabled for now since we're using our own model.
-            #OPENAI_API_KEY=settings.OPENAI_API_KEY,
-            #ANTHROPIC_API_KEY=settings.ANTHROPIC_API_KEY,
-            #LANGSMITH_API_KEY=settings.LANGSMITH_API_KEY,
+            # For Modal functions we need to use the public URL
+            QDRANT_URL="qdrant-production-4336.up.railway.app:443",
         )
     )
 )
@@ -55,8 +52,6 @@ app = modal.App(image=image, name="paper_indexer")
 def get_indexer() -> PaperIndexer:
     embedding_config = Embedding.default()
     vector_store = QdrantVectorStore.instance(
-        # For Modal functions we need to use the public URL
-        url="qdrant-production-4336.up.railway.app:443",
         collection_name="papers",
         embedding_config=embedding_config,
     )
@@ -67,7 +62,7 @@ def get_indexer() -> PaperIndexer:
     )
 
 
-@app.function()
+@app.function(secrets=[modal.Secret.from_name("qdrant-api-key")])
 def index_single(url: str):
     try:
         s = datetime.now()
@@ -81,7 +76,7 @@ def index_single(url: str):
         )
 
 
-@app.function()
+@app.function(secrets=[modal.Secret.from_name("qdrant-api-key")])
 def index_batch(urls: list[str]) -> None:
     s = datetime.now()
     indexer = get_indexer()

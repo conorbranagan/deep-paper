@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from app.pipeline.embedding import EmbeddingConfig
 from app.pipeline.chunk import Chunk
+from app.config import settings
 
 log = logging.getLogger(__name__)
 
@@ -40,12 +41,11 @@ class VectorStore(ABC):
 class QdrantVectorStore(VectorStore):
     """Vector store using Qdrant."""
 
-    _instance_by_url: dict[str, "QdrantVectorStore"] = {}
+    _instance = None
 
     @classmethod
     def instance(
         cls,
-        url: str,
         collection_name: str,
         embedding_config: EmbeddingConfig,
         timeout: int = 5,
@@ -53,11 +53,13 @@ class QdrantVectorStore(VectorStore):
         """Get the singleton instance of the Qdrant vector store.
         You should always use this method to avoid multiple connections causing issues.
         """
-        if url not in cls._instance_by_url:
-            cls._instance_by_url[url] = cls(
-                url, collection_name, embedding_config, timeout
+        url = settings.QDRANT_URL
+        api_key = settings.QDRANT_API_KEY or None
+        if cls._instance is None:
+            cls._instance = cls(
+                url, collection_name, embedding_config, timeout, api_key
             )
-        return cls._instance_by_url[url]
+        return cls._instance
 
     def __init__(
         self,
@@ -65,6 +67,7 @@ class QdrantVectorStore(VectorStore):
         collection_name: str,
         embedding_config: EmbeddingConfig,
         timeout: int = 5,
+        api_key: str | None = None,
     ):
         """Initialize the Qdrant vector store.
         Supports local file paths (file://path/to/data/qdrant) and remote URLs (host:port)
@@ -76,7 +79,7 @@ class QdrantVectorStore(VectorStore):
             host, port = url.split(":")
             https = port == "443"
             self.client = QdrantClient(
-                host=host, port=int(port), timeout=timeout, https=https
+                host=host, port=int(port), timeout=timeout, https=https, api_key=api_key
             )
             log.info("using remote qdrant at %s:%s", host, port)
 
