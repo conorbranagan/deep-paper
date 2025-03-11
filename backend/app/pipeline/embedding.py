@@ -82,4 +82,4 @@ class Embedding:
 
     @classmethod
     def default(cls):
-        return cls.OPENAI_ADA_002
+        return cls.SBERT_MINI_LM

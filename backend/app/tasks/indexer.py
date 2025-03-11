@@ -10,7 +10,6 @@ from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
 from app.pipeline.embedding import Embedding
 from app.pipeline.vector_store import QdrantVectorStore
-from app.config import settings
 
 log = logging.getLogger(__name__)
 
@@ -42,9 +41,10 @@ image = (
     .pip_install(deps)
     .env(
         dict(
-            OPENAI_API_KEY=settings.OPENAI_API_KEY,
-            ANTHROPIC_API_KEY=settings.ANTHROPIC_API_KEY,
-            LANGSMITH_API_KEY=settings.LANGSMITH_API_KEY,
+            # Disabled for now since we're using our own model.
+            #OPENAI_API_KEY=settings.OPENAI_API_KEY,
+            #ANTHROPIC_API_KEY=settings.ANTHROPIC_API_KEY,
+            #LANGSMITH_API_KEY=settings.LANGSMITH_API_KEY,
         )
     )
 )
@@ -98,7 +98,7 @@ def index_batch(urls: list[str]) -> None:
     print(f"Crawled: {len(urls)} papers in {datetime.now() - s}")
 
 
-@app.function(timeout=300)
+@app.function(timeout=600)
 def papers_crawler(urls: list[str]):
     start_time = datetime.now()
 
@@ -106,7 +106,7 @@ def papers_crawler(urls: list[str]):
     job_queue.put_many(urls)
 
     visited: set[str] = set([])
-    per_spawn = 5
+    per_spawn = 50
 
     # Crawl until the queue is empty
     while True:
@@ -127,6 +127,7 @@ def papers_crawler(urls: list[str]):
 
 @app.local_entrypoint()
 def main():
+    # Test entrypoint for local development
     urls = [
         "https://arxiv.org/abs/2309.15217",
         "https://arxiv.org/abs/2206.05802",
