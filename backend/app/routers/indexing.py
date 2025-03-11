@@ -42,11 +42,11 @@ class TaskStatusResponse(BaseModel):
 async def submit_paper_for_indexing(request: IndexPaperRequest):
     """Submit a paper for indexing"""
     try:
-        # Queue the indexing task
-        task = index_paper.delay(request.arxiv_id)
+        # Queue the indexing task TODO: Fix this
+        #task = index_paper.delay(request.arxiv_id)
 
         return IndexPaperResponse(
-            task_id=task.id,
+            task_id="",
             arxiv_id=request.arxiv_id,
             status="queued"
         )
@@ -57,11 +57,11 @@ async def submit_paper_for_indexing(request: IndexPaperRequest):
 async def submit_papers_batch_for_indexing(request: IndexPaperBatchRequest):
     """Submit multiple papers for indexing"""
     try:
-        # Queue the batch indexing task
-        task = index_papers_batch.delay(request.arxiv_ids)
+        # Queue the batch indexing task TODO: Fix this
+        #task = index_papers_batch.delay(request.arxiv_ids)
 
         return IndexPaperBatchResponse(
-            task_id=task.id,
+            task_id="",
             arxiv_ids=request.arxiv_ids,
             status="queued"
         )
