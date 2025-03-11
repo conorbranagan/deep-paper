@@ -8,7 +8,7 @@ from langchain_community.retrievers import BM25Retriever
 from app.pipeline.vector_store import VectorStore, QdrantVectorStore
 from app.pipeline.embedding import Embedding
 from app.agents.observability import SmolLLMObs, wrap_llmobs
-from app.config import settings
+
 wrap_llmobs()
 
 @SmolLLMObs.wrapped_tool
