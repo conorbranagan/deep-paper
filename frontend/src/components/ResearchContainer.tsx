@@ -6,20 +6,27 @@ import ResearchSidebar from './ResearchSidebar';
 import ExploreView from './ExploreView';
 import { ResearchTab } from './types';
 import { v4 as uuidv4 } from 'uuid';
+import { modelOptions } from './lib/modelOptions';
 
 export default function ResearchContainer() {
   const [tabs, setTabs] = useState<ResearchTab[]>([]);
   const [activeTabID, setActiveTabID] = useState<string>('explore');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  const [selectedModel, setSelectedModel] = useState<string>(modelOptions[0].id);
 
-  // Load tabs from localStorage on initial render
+  // Load tabs and settings from localStorage on initial render
   useEffect(() => {
     const savedTabs = localStorage.getItem('research-tabs');
     const savedActiveTabID = localStorage.getItem('research-active-tab');
     const savedSidebarState = localStorage.getItem('research-sidebar-open');
+    const savedModel = localStorage.getItem('research-selected-model');
 
     if (savedSidebarState !== null) {
       setIsSidebarOpen(savedSidebarState === 'true');
+    }
+
+    if (savedModel) {
+      setSelectedModel(savedModel);
     }
 
     if (savedTabs) {
@@ -45,6 +52,11 @@ export default function ResearchContainer() {
   useEffect(() => {
     localStorage.setItem('research-sidebar-open', String(isSidebarOpen));
   }, [isSidebarOpen]);
+
+  // Save selected model to localStorage
+  useEffect(() => {
+    localStorage.setItem('research-selected-model', selectedModel);
+  }, [selectedModel]);
 
   // Save tabs to localStorage whenever they change
   useEffect(() => {
@@ -147,6 +159,10 @@ export default function ResearchContainer() {
     setActiveTabID('explore');
   };
 
+  const handleModelChange = (modelId: string) => {
+    setSelectedModel(modelId);
+  };
+
   return (
     <div className="flex h-screen overflow-hidden">
       <ResearchSidebar
@@ -158,11 +174,16 @@ export default function ResearchContainer() {
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
         onExploreClick={handleExploreClick}
+        selectedModel={selectedModel}
+        onModelChange={handleModelChange}
       />
 
       <div className={`flex-1 overflow-y-auto transition-all duration-300 ${!isSidebarOpen ? 'ml-0' : ''}`}>
         {activeTabID === 'explore' ? (
-          <ExploreView onResearchPaper={onResearchPaper} />
+          <ExploreView
+            onResearchPaper={onResearchPaper}
+            selectedModel={selectedModel}
+          />
         ) : (
           <Researcher
             key={tabs.find(tab => tab.id === activeTabID)?.id}
@@ -171,6 +192,7 @@ export default function ResearchContainer() {
             onTitleChange={handleTitleChange}
             onResearchPaper={onResearchPaper}
             initialUrl={tabs.find(tab => tab.id === activeTabID)?.initialUrl}
+            selectedModel={selectedModel}
           />
         )}
       </div>

@@ -2,6 +2,14 @@ import React, { useState } from 'react';
 import { Button } from './ui/button';
 import { PlusIcon, XIcon, ChevronRightIcon, SearchIcon, NotepadTextIcon } from 'lucide-react';
 import { ResearchTab } from './types';
+import { ModelOption, modelOptions } from './lib/modelOptions';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 
 interface ResearchSidebarProps {
   activeTabID: string;
@@ -12,6 +20,8 @@ interface ResearchSidebarProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   onExploreClick: () => void;
+  selectedModel: string;
+  onModelChange: (modelId: string) => void;
 }
 
 export default function ResearchSidebar({
@@ -22,7 +32,9 @@ export default function ResearchSidebar({
   onDeleteTab,
   isOpen,
   setIsOpen,
-  onExploreClick
+  onExploreClick,
+  selectedModel,
+  onModelChange
 }: ResearchSidebarProps) {
   const [isHovering, setIsHovering] = useState(false);
 
@@ -76,7 +88,7 @@ export default function ResearchSidebar({
         {/* In Review Section */}
         <div className="p-4 border-b border-gray-200 flex justify-between items-center">
           <div className="flex items-center">
-          <NotepadTextIcon className="h-4 w-4 mr-2" />
+            <NotepadTextIcon className="h-4 w-4 mr-2" />
             <h2 className="font-semibold">In Review</h2>
           </div>
           <Button
@@ -124,6 +136,25 @@ export default function ResearchSidebar({
               </button>
             </div>
           ))}
+        </div>
+
+        {/* Model Selection */}
+        <div className="p-4 border-b border-gray-200">
+          <Select
+            value={selectedModel}
+            onValueChange={onModelChange}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select model" />
+            </SelectTrigger>
+            <SelectContent>
+              {modelOptions.map((model) => (
+                <SelectItem key={model.id} value={model.id}>
+                  {model.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>

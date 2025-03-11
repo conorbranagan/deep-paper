@@ -24,9 +24,10 @@ interface ExploreContentMessage {
 
 interface ExploreViewProps {
   onResearchPaper: (url: string) => void;
+  selectedModel: string;
 }
 
-export default function ExploreView({ onResearchPaper }: ExploreViewProps) {
+export default function ExploreView({ onResearchPaper, selectedModel }: ExploreViewProps) {
   const [query, setQuery] = useState<string>('');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
   const [submittedQuery, setSubmittedQuery] = useState<string>('');
@@ -44,7 +45,7 @@ export default function ExploreView({ onResearchPaper }: ExploreViewProps) {
     url: makeAPIURL('api/explore'),
     queryParams: {
       query: submittedQuery,
-      model: 'openai/gpt-4o-mini',
+      model: selectedModel,
     },
     enabled: submittedQuery.length > 0,
   });

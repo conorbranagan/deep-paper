@@ -64,6 +64,10 @@ def summarize_paper(paper: Paper, model: str = settings.DEFAULT_MODEL) -> PaperS
     # In practice we can do some retries in case our LLM provider is flaky.
     key_topics = KeyTopics.model_validate_json(topics_response)
 
+    # Sometimes we create citations without URLs but we need one for the frontend.
+    for topic in key_topics.topics:
+        topic.further_reading = [c for c in topic.further_reading if c.url is not None]
+
     formatted_prompt = SUMMARIZE_PAPER_PROMPT.format(
         paper_contents=paper.latex_contents()
     )

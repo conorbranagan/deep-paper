@@ -17,16 +17,13 @@ import {
 } from './ui/select';
 import { Topic } from './types';
 import { makeAPIURL } from './lib/utils';
+import { modelOptions } from './lib/modelOptions';
+
 interface PaperSummary {
   title: string;
   abstract: string;
   summary: string;
   topics: Topic[];
-}
-
-interface ModelOption {
-  id: string;
-  name: string;
 }
 
 interface ResearcherProps {
@@ -35,31 +32,27 @@ interface ResearcherProps {
   onResearchPaper: (url: string) => void;
   tabId: string;
   initialUrl?: string;
+  selectedModel: string;
 }
-
-const modelOptions: ModelOption[] = [
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini' },
-  { id: 'anthropic/claude-3-7-sonnet-latest', name: 'Claude 3.7 Sonnet' },
-  { id: "anthropic/claude-3-5-sonnet-latest", name: "Claude 3.5 Sonnet" },
-  { id: "anthropic/claude-3-5-haiku-latest", name: "Claude 3.5 Haiku" },
-  { id: 'openai/gpt-4o', name: 'GPT-4o' },
-  { id: 'vertex_ai/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash' },
-  { id: 'vertex_ai/gemini-2.0-flash-lite-001', name: 'Gemini 2.0 Flash Lite' },
-  { id: 'vertex_ai/gemini-2.0-pro-exp-02-05', name: 'Gemini 2.0 Pro Exp 02-05' },
-];
 
 const validateUrl = (url: string): boolean => {
   return url.startsWith('https://arxiv.org/abs')
 };
 
-export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitleChange, onResearchPaper, tabId, initialUrl }: ResearcherProps) => {
+export const Researcher: React.FC<ResearcherProps> = ({
+  onLoadingChange,
+  onTitleChange,
+  onResearchPaper,
+  tabId,
+  initialUrl,
+  selectedModel
+}: ResearcherProps) => {
   const [url, setUrl] = useState<string>(initialUrl || '');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [paperSummary, setPaperSummary] = useState<PaperSummary | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [error, setError] = useState<string>('');
   const [showAbstract, setShowAbstract] = useState<boolean>(false);
-  const [selectedModel, setSelectedModel] = useState<string>(modelOptions[0].id);
   const [question, setQuestion] = useState<string>('');
 
   // Load state from localStorage on initial render
@@ -70,7 +63,6 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
         const parsedState = JSON.parse(savedState);
         setPaperSummary(parsedState.paperSummary);
         setUrl(parsedState.url || '');
-        setSelectedModel(parsedState.selectedModel || modelOptions[0].id);
       }
     } catch (error) {
       console.error('Error loading research state from localStorage:', error);
@@ -82,8 +74,7 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
     try {
       const stateToSave = {
         paperSummary,
-        url,
-        selectedModel
+        url
       };
       if (paperSummary) {
         localStorage.setItem(`research-state-${tabId}`, JSON.stringify(stateToSave));
@@ -91,7 +82,7 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
     } catch (error) {
       console.error('Error saving research state to localStorage:', error);
     }
-  }, [paperSummary, url, selectedModel, tabId]);
+  }, [paperSummary, url, tabId]);
 
   // Changes to loading and title must propagate to container tabs.
   useEffect(() => {
@@ -173,22 +164,6 @@ export const Researcher: React.FC<ResearcherProps> = ({ onLoadingChange, onTitle
             className="flex-grow px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={isLoading}
           />
-          <Select
-            value={selectedModel}
-            onValueChange={setSelectedModel}
-            disabled={isLoading}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Select model" />
-            </SelectTrigger>
-            <SelectContent>
-              {modelOptions.map((model) => (
-                <SelectItem key={model.id} value={model.id}>
-                  {model.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Button
             type="submit"
             disabled={isLoading}
