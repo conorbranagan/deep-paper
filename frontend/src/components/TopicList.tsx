@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { Topic } from './types';
+import React from "react";
+import { Topic } from "./types";
 
 interface TopicListProps {
   topics: Topic[];

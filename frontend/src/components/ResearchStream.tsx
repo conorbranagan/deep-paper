@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import React from 'react';
-import { Card, CardContent } from './ui/card';
-import ResearchStreamItem from './ResearchStreamItem';
-import { useEventSource } from './utils/EventSourceManager';
+import React from "react";
+import { Card, CardContent } from "./ui/card";
+import ResearchStreamItem from "./ResearchStreamItem";
+import { useEventSource } from "./utils/EventSourceManager";
 
 interface ResearchStreamData {
   type: string;
@@ -22,22 +22,22 @@ interface ResearchStreamProps {
 
 const getContentStyle = (type: string) => {
   switch (type) {
-    case 'thought':
-      return 'bg-purple-50 border-purple-200 text-purple-800';
-    case 'action':
-      return 'bg-yellow-50 border-yellow-200 text-yellow-800';
-    case 'result':
-      return 'bg-green-50 border-green-200 text-green-800';
-    case 'summary':
-      return 'bg-blue-50 border-blue-200 text-blue-800';
-    case 'error':
-      return 'bg-red-50 border-red-200 text-red-800';
-    case 'user-question':
-      return 'bg-gray-100 border-gray-300 text-gray-800';
-    case 'agent-answer':
-      return 'bg-blue-50 border-blue-200 text-blue-800';
+    case "thought":
+      return "bg-purple-50 border-purple-200 text-purple-800";
+    case "action":
+      return "bg-yellow-50 border-yellow-200 text-yellow-800";
+    case "result":
+      return "bg-green-50 border-green-200 text-green-800";
+    case "summary":
+      return "bg-blue-50 border-blue-200 text-blue-800";
+    case "error":
+      return "bg-red-50 border-red-200 text-red-800";
+    case "user-question":
+      return "bg-gray-100 border-gray-300 text-gray-800";
+    case "agent-answer":
+      return "bg-blue-50 border-blue-200 text-blue-800";
     default:
-      return 'bg-gray-50 border-gray-200 text-gray-800';
+      return "bg-gray-50 border-gray-200 text-gray-800";
   }
 };
 
@@ -52,7 +52,7 @@ export default function ResearchStream({
     onComplete,
   });
 
-  const isResearching = status === 'connecting' || status === 'streaming';
+  const isResearching = status === "connecting" || status === "streaming";
 
   return (
     <>
@@ -64,7 +64,11 @@ export default function ResearchStream({
                 key={index}
                 className={`border rounded-md p-4 mb-4 ${getContentStyle(item.type)}`}
               >
-                <ResearchStreamItem key={index} type={item.type} content={item.content} />
+                <ResearchStreamItem
+                  key={index}
+                  type={item.type}
+                  content={item.content}
+                />
               </div>
             ))}
           </CardContent>
@@ -77,12 +81,9 @@ export default function ResearchStream({
             <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
             <div className="h-2 w-2 bg-blue-600 rounded-full"></div>
           </div>
-          <div className="ml-3 text-sm text-gray-600">
-            Researching...
-          </div>
+          <div className="ml-3 text-sm text-gray-600">Researching...</div>
         </div>
       )}
     </>
   );
 }
-

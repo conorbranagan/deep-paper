@@ -1,7 +1,7 @@
-import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import type { CSSProperties } from 'react';
-import type { Components } from 'react-markdown';
+import React from "react";
+import ReactMarkdown from "react-markdown";
+import type { CSSProperties } from "react";
+import type { Components } from "react-markdown";
 
 interface MarkdownRendererProps {
   /** The markdown content as children (string) */
@@ -18,7 +18,7 @@ Custom markdown wrapper so we can have nice default styles, as tailwind undoes t
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   children,
   additionalComponents = {},
-  containerStyle = {}
+  containerStyle = {},
 }) => {
   // Default styling for lists
   const defaultComponents = {
@@ -122,20 +122,18 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         }}
         {...props}
       />
-    )
+    ),
   };
 
   // Merge default components with any additional components provided
   const mergedComponents = {
     ...defaultComponents,
-    ...additionalComponents
+    ...additionalComponents,
   };
 
   return (
     <div style={containerStyle}>
-      <ReactMarkdown components={mergedComponents}>
-        {children}
-      </ReactMarkdown>
+      <ReactMarkdown components={mergedComponents}>{children}</ReactMarkdown>
     </div>
   );
 };

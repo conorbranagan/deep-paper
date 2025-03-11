@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import React, { useRef } from 'react';
-import { Card, CardContent } from './ui/card';
-import { ExternalLink, BookOpen } from 'lucide-react';
-import MarkdownRenderer from './ui/markdown';
-import { Topic } from './types';
-import { useEventSource } from './utils/EventSourceManager';
-import { makeAPIURL } from './lib/utils';
+import React, { useRef } from "react";
+import { Card, CardContent } from "./ui/card";
+import { ExternalLink, BookOpen } from "lucide-react";
+import MarkdownRenderer from "./ui/markdown";
+import { Topic } from "./types";
+import { useEventSource } from "./utils/EventSourceManager";
+import { makeAPIURL } from "./lib/utils";
 
 interface TopicDetailProps {
   topic: Topic;
@@ -20,15 +20,23 @@ interface TopicContentMessage {
   content: string;
 }
 
-const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model, onResearchPaper }) => {
+const TopicDetail: React.FC<TopicDetailProps> = ({
+  topic,
+  paperUrl,
+  model,
+  onResearchPaper,
+}) => {
   const streamEndRef = useRef<HTMLDivElement>(null);
 
   const apiUrl = paperUrl && topic ? makeAPIURL(`api/paper/topic`) : null;
-  const queryParams: Record<string, string | string[]> = paperUrl && topic ? {
-    url: paperUrl,
-    topic: topic.topic,
-    model: model
-  } : {};
+  const queryParams: Record<string, string | string[]> =
+    paperUrl && topic
+      ? {
+          url: paperUrl,
+          topic: topic.topic,
+          model: model,
+        }
+      : {};
 
   const { messages, status, error } = useEventSource<TopicContentMessage>({
     url: apiUrl,
@@ -37,14 +45,14 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model, onRes
 
   // Combine all content messages into a single string
   const topicContent = messages
-    .filter(msg => msg.type === 'content')
-    .map(msg => msg.content)
-    .join('');
+    .filter((msg) => msg.type === "content")
+    .map((msg) => msg.content)
+    .join("");
 
-  const isLoading = status === 'connecting' || status === 'streaming';
+  const isLoading = status === "connecting" || status === "streaming";
 
   const isArxivUrl = (url: string): boolean => {
-    return url.startsWith('https://arxiv.org/abs');
+    return url.startsWith("https://arxiv.org/abs");
   };
 
   if (!topic) {
@@ -106,7 +114,9 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model, onRes
                         {paper.title}
                       </a>
                     </h4>
-                    <p className="text-gray-600 text-sm">{paper.author} ({paper.year})</p>
+                    <p className="text-gray-600 text-sm">
+                      {paper.author} ({paper.year})
+                    </p>
                   </div>
                   <div className="flex space-x-2">
                     {isArxivUrl(paper.url) && onResearchPaper && (
@@ -138,7 +148,9 @@ const TopicDetail: React.FC<TopicDetailProps> = ({ topic, paperUrl, model, onRes
             ))}
           </div>
         ) : (
-          <p className="text-gray-500">No further reading available for this topic.</p>
+          <p className="text-gray-500">
+            No further reading available for this topic.
+          </p>
         )}
       </div>
     </div>

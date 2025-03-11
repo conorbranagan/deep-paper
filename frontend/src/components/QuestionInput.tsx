@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Button } from './ui/button';
+import { useState } from "react";
+import { Button } from "./ui/button";
 
 interface QuestionInputProps {
   onSubmit: (question: string) => void;
@@ -9,8 +9,12 @@ interface QuestionInputProps {
   placeholder: string;
 }
 
-export default function QuestionInput({ onSubmit, disabled, placeholder }: QuestionInputProps) {
-  const [question, setQuestion] = useState<string>('');
+export default function QuestionInput({
+  onSubmit,
+  disabled,
+  placeholder,
+}: QuestionInputProps) {
+  const [question, setQuestion] = useState<string>("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,8 +34,8 @@ export default function QuestionInput({ onSubmit, disabled, placeholder }: Quest
           className="flex-grow px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           disabled={disabled}
         />
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           disabled={disabled || !question.trim()}
           className="px-6 py-2 rounded font-medium"
           variant="default"

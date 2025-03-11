@@ -1,23 +1,23 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import QuestionInput from './QuestionInput';
-import TopicList from './TopicList';
-import TopicDetail from './TopicDetail';
-import ResearchStream from './ResearchStream';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import MarkdownRenderer from './ui/markdown';
+import { useState, useEffect, useCallback } from "react";
+import QuestionInput from "./QuestionInput";
+import TopicList from "./TopicList";
+import TopicDetail from "./TopicDetail";
+import ResearchStream from "./ResearchStream";
+import { Card, CardContent } from "./ui/card";
+import { Button } from "./ui/button";
+import MarkdownRenderer from "./ui/markdown";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from './ui/select';
-import { Topic } from './types';
-import { makeAPIURL } from './lib/utils';
-import { modelOptions } from './lib/modelOptions';
+} from "./ui/select";
+import { Topic } from "./types";
+import { makeAPIURL } from "./lib/utils";
+import { modelOptions } from "./lib/modelOptions";
 
 interface PaperSummary {
   title: string;
@@ -36,7 +36,7 @@ interface ResearcherProps {
 }
 
 const validateUrl = (url: string): boolean => {
-  return url.startsWith('https://arxiv.org/abs')
+  return url.startsWith("https://arxiv.org/abs");
 };
 
 export const Researcher: React.FC<ResearcherProps> = ({
@@ -45,15 +45,15 @@ export const Researcher: React.FC<ResearcherProps> = ({
   onResearchPaper,
   tabId,
   initialUrl,
-  selectedModel
+  selectedModel,
 }: ResearcherProps) => {
-  const [url, setUrl] = useState<string>(initialUrl || '');
+  const [url, setUrl] = useState<string>(initialUrl || "");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [paperSummary, setPaperSummary] = useState<PaperSummary | null>(null);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState<string>("");
   const [showAbstract, setShowAbstract] = useState<boolean>(false);
-  const [question, setQuestion] = useState<string>('');
+  const [question, setQuestion] = useState<string>("");
 
   // Load state from localStorage on initial render
   useEffect(() => {
@@ -62,10 +62,10 @@ export const Researcher: React.FC<ResearcherProps> = ({
       if (savedState) {
         const parsedState = JSON.parse(savedState);
         setPaperSummary(parsedState.paperSummary);
-        setUrl(parsedState.url || '');
+        setUrl(parsedState.url || "");
       }
     } catch (error) {
-      console.error('Error loading research state from localStorage:', error);
+      console.error("Error loading research state from localStorage:", error);
     }
   }, [tabId]);
 
@@ -74,13 +74,16 @@ export const Researcher: React.FC<ResearcherProps> = ({
     try {
       const stateToSave = {
         paperSummary,
-        url
+        url,
       };
       if (paperSummary) {
-        localStorage.setItem(`research-state-${tabId}`, JSON.stringify(stateToSave));
+        localStorage.setItem(
+          `research-state-${tabId}`,
+          JSON.stringify(stateToSave),
+        );
       }
     } catch (error) {
-      console.error('Error saving research state to localStorage:', error);
+      console.error("Error saving research state to localStorage:", error);
     }
   }, [paperSummary, url, tabId]);
 
@@ -95,48 +98,55 @@ export const Researcher: React.FC<ResearcherProps> = ({
     }
   }, [tabId, paperSummary?.title, onTitleChange]);
 
-  const fetchSummary = useCallback(async (url: string, signal: AbortSignal) => {
-    if (!validateUrl(url)) {
-      setError('Please enter a valid arXiv URL (e.g. https://arxiv.org/abs/2005.14165)');
-      return;
-    }
-
-    setError('');
-    setIsLoading(true);
-    setPaperSummary(null);
-    setSelectedTopic(null);
-    setShowAbstract(false);
-    onTitleChange?.(tabId, url);
-
-    try {
-      const searchParams = new URLSearchParams();
-      searchParams.append('url', url);
-      searchParams.append('model', selectedModel);
-      const apiUrl = makeAPIURL(`api/paper/summarize?${searchParams.toString()}`);
-
-      const fetchPromise = fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: signal,
-      });
-      const response = await fetchPromise;
-      if (!response.ok) {
-        throw new Error('Failed to summarize paper');
-      }
-      const data = await response.json();
-      setPaperSummary(data);
-      setIsLoading(false);
-    } catch (error) {
-      if (signal.aborted) {
+  const fetchSummary = useCallback(
+    async (url: string, signal: AbortSignal) => {
+      if (!validateUrl(url)) {
+        setError(
+          "Please enter a valid arXiv URL (e.g. https://arxiv.org/abs/2005.14165)",
+        );
         return;
       }
-      console.error('Research error:', error);
-      setError('Failed to process the paper. Please try again.');
-      setIsLoading(false);
-    }
-  }, [selectedModel, onTitleChange, tabId]);
+
+      setError("");
+      setIsLoading(true);
+      setPaperSummary(null);
+      setSelectedTopic(null);
+      setShowAbstract(false);
+      onTitleChange?.(tabId, url);
+
+      try {
+        const searchParams = new URLSearchParams();
+        searchParams.append("url", url);
+        searchParams.append("model", selectedModel);
+        const apiUrl = makeAPIURL(
+          `api/paper/summarize?${searchParams.toString()}`,
+        );
+
+        const fetchPromise = fetch(apiUrl, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          signal: signal,
+        });
+        const response = await fetchPromise;
+        if (!response.ok) {
+          throw new Error("Failed to summarize paper");
+        }
+        const data = await response.json();
+        setPaperSummary(data);
+        setIsLoading(false);
+      } catch (error) {
+        if (signal.aborted) {
+          return;
+        }
+        console.error("Research error:", error);
+        setError("Failed to process the paper. Please try again.");
+        setIsLoading(false);
+      }
+    },
+    [selectedModel, onTitleChange, tabId],
+  );
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -146,15 +156,17 @@ export const Researcher: React.FC<ResearcherProps> = ({
     return () => abortController.abort();
   }, [initialUrl, fetchSummary]);
 
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-center">Paper Review</h1>
-      <form onSubmit={(e: React.FormEvent) => {
-        e.preventDefault();
-        const abortController = new AbortController();
-        fetchSummary(url, abortController.signal);
-      }} className="mb-8">
+      <form
+        onSubmit={(e: React.FormEvent) => {
+          e.preventDefault();
+          const abortController = new AbortController();
+          fetchSummary(url, abortController.signal);
+        }}
+        className="mb-8"
+      >
         <div className="flex gap-2 mb-2">
           <input
             type="text"
@@ -167,12 +179,13 @@ export const Researcher: React.FC<ResearcherProps> = ({
           <Button
             type="submit"
             disabled={isLoading}
-            className={`px-6 py-2 rounded font-medium ${isLoading
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
+            className={`px-6 py-2 rounded font-medium ${
+              isLoading
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700 text-white"
+            }`}
           >
-            {isLoading ? 'Processing...' : 'Research'}
+            {isLoading ? "Processing..." : "Research"}
           </Button>
         </div>
         {error && <p className="text-red-500 text-sm">{error}</p>}
@@ -185,7 +198,10 @@ export const Researcher: React.FC<ResearcherProps> = ({
             <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
             <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
           </div>
-          <div className="ml-4">Analyzing paper with {modelOptions.find(m => m.id === selectedModel)?.name}...</div>
+          <div className="ml-4">
+            Analyzing paper with{" "}
+            {modelOptions.find((m) => m.id === selectedModel)?.name}...
+          </div>
         </div>
       )}
 
@@ -206,17 +222,17 @@ export const Researcher: React.FC<ResearcherProps> = ({
                 </a>
               </div>
               <h3 className="text-xl font-bold mb-4">Summary</h3>
-              <MarkdownRenderer>
-                {paperSummary.summary}
-              </MarkdownRenderer>
+              <MarkdownRenderer>{paperSummary.summary}</MarkdownRenderer>
 
               <div className="mt-6 ">
                 <div
-                  onClick={() => { setShowAbstract(!showAbstract) }}
+                  onClick={() => {
+                    setShowAbstract(!showAbstract);
+                  }}
                   className="p-3 cursor-pointer hover:bg-gray-50"
                 >
                   <span className="text-md text-gray-500 align-text-middle">
-                    {showAbstract ? '▼' : '▶'}
+                    {showAbstract ? "▼" : "▶"}
                   </span>
                   <span className="text-xl font-bold p-2">Abstract</span>
                 </div>
@@ -234,14 +250,21 @@ export const Researcher: React.FC<ResearcherProps> = ({
           {!selectedTopic ? (
             <div>
               <h2 className="text-2xl font-bold mb-4">🔍 Explore Key Topics</h2>
-              <TopicList topics={paperSummary.topics} onTopicSelect={(topic: Topic) => { setSelectedTopic(topic) }} />
+              <TopicList
+                topics={paperSummary.topics}
+                onTopicSelect={(topic: Topic) => {
+                  setSelectedTopic(topic);
+                }}
+              />
             </div>
           ) : (
             <div>
               <div className="flex items-center mb-4">
                 <Button
                   variant="outline"
-                  onClick={() => { setSelectedTopic(null) }}
+                  onClick={() => {
+                    setSelectedTopic(null);
+                  }}
                   className="mr-4"
                 >
                   ← Back to Topics
@@ -262,11 +285,13 @@ export const Researcher: React.FC<ResearcherProps> = ({
             <QuestionInput
               onSubmit={(question: string) => {
                 if (!url || !question.trim()) {
-                  setError('Please enter both a valid URL and a research question');
+                  setError(
+                    "Please enter both a valid URL and a research question",
+                  );
                   return;
                 }
                 setQuestion(question);
-                setError('');
+                setError("");
               }}
               disabled={!paperSummary || isLoading}
               placeholder="Ask a research question about this paper..."
@@ -277,7 +302,7 @@ export const Researcher: React.FC<ResearcherProps> = ({
                 queryParams={{
                   paper_url: url,
                   query: question,
-                  model: selectedModel
+                  model: selectedModel,
                 }}
               />
             )}
@@ -286,6 +311,6 @@ export const Researcher: React.FC<ResearcherProps> = ({
       )}
     </div>
   );
-}
+};
 
 export default Researcher;

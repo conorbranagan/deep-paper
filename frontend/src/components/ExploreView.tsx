@@ -1,14 +1,20 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, ExternalLink, BookOpen } from 'lucide-react';
-import { makeAPIURL } from './lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import MarkdownRenderer from './ui/markdown';
-import { useEventSource } from './utils/EventSourceManager';
+import React, { useState, useRef, useEffect } from "react";
+import { Search, ExternalLink, BookOpen } from "lucide-react";
+import { makeAPIURL } from "./lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip";
+import MarkdownRenderer from "./ui/markdown";
+import { useEventSource } from "./utils/EventSourceManager";
 
 // Must match the python regex in backend/app/agents/explore.py
-const CITATION_REGEX = /(citation_id:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/g;
+const CITATION_REGEX =
+  /(citation_id:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/g;
 
 interface Citation {
   id: string;
@@ -27,10 +33,13 @@ interface ExploreViewProps {
   selectedModel: string;
 }
 
-export default function ExploreView({ onResearchPaper, selectedModel }: ExploreViewProps) {
-  const [query, setQuery] = useState<string>('');
+export default function ExploreView({
+  onResearchPaper,
+  selectedModel,
+}: ExploreViewProps) {
+  const [query, setQuery] = useState<string>("");
   const [hasSearched, setHasSearched] = useState<boolean>(false);
-  const [submittedQuery, setSubmittedQuery] = useState<string>('');
+  const [submittedQuery, setSubmittedQuery] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -40,23 +49,22 @@ export default function ExploreView({ onResearchPaper, selectedModel }: ExploreV
     }
   }, [hasSearched]);
 
-
   const { messages, status, error } = useEventSource<ExploreContentMessage>({
-    url: makeAPIURL('api/explore'),
+    url: makeAPIURL("api/explore"),
     queryParams: {
       query: submittedQuery,
       model: selectedModel,
     },
     enabled: submittedQuery.length > 0,
   });
-  const isLoading = status === 'connecting' || status === 'streaming';
+  const isLoading = status === "connecting" || status === "streaming";
 
   const exploreData = messages
-    .filter(msg => msg.type === 'content')
-    .map(msg => msg.content)
-    .join('');
+    .filter((msg) => msg.type === "content")
+    .map((msg) => msg.content)
+    .join("");
   const citationsMap = messages
-    .filter(msg => msg.type === 'citation')
+    .filter((msg) => msg.type === "citation")
     .reduce((acc: Record<string, Citation>, msg: ExploreContentMessage) => {
       if (msg.payload) {
         acc[msg.payload.id] = msg.payload;
@@ -72,15 +80,17 @@ export default function ExploreView({ onResearchPaper, selectedModel }: ExploreV
 
     setHasSearched(true);
     setSubmittedQuery(query);
-  }
+  };
 
   return (
-    <div className={`max-w-5xl mx-auto px-4 py-8 ${!hasSearched ? 'flex flex-col justify-center min-h-[70vh]' : ''}`}>
-      <div className={`transition-all duration-300 ${hasSearched ? 'mb-8' : 'mb-0'}`}>
+    <div
+      className={`max-w-5xl mx-auto px-4 py-8 ${!hasSearched ? "flex flex-col justify-center min-h-[70vh]" : ""}`}
+    >
+      <div
+        className={`transition-all duration-300 ${hasSearched ? "mb-8" : "mb-0"}`}
+      >
         {!hasSearched && (
-          <h1 className="font-bold text-center text-4xl mb-3">
-            Explore
-          </h1>
+          <h1 className="font-bold text-center text-4xl mb-3">Explore</h1>
         )}
 
         <form onSubmit={handleSearch} className="max-w-2xl mx-auto">
@@ -95,7 +105,9 @@ export default function ExploreView({ onResearchPaper, selectedModel }: ExploreV
               disabled={isLoading}
             />
             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-              <Search className={`h-5 w-5 ${isLoading ? 'text-gray-400' : 'text-gray-600'}`} />
+              <Search
+                className={`h-5 w-5 ${isLoading ? "text-gray-400" : "text-gray-600"}`}
+              />
             </div>
           </div>
           {error && <p className="text-red-500 mt-2 text-center">{error}</p>}
@@ -130,18 +142,26 @@ export default function ExploreView({ onResearchPaper, selectedModel }: ExploreV
                                 <React.Fragment key={idx}>
                                   <CitationLink
                                     citation={citation}
-                                    handleResearchPaper={(arxivId) => onResearchPaper(`https://arxiv.org/abs/${arxivId}`)}
+                                    handleResearchPaper={(arxivId) =>
+                                      onResearchPaper(
+                                        `https://arxiv.org/abs/${arxivId}`,
+                                      )
+                                    }
                                   />
                                 </React.Fragment>
                               );
                             }
-                            return <React.Fragment key={idx}>{part}</React.Fragment>;
+                            return (
+                              <React.Fragment key={idx}>{part}</React.Fragment>
+                            );
                           })}
                         </div>
                       );
-                    }
+                    },
                   }}
-                >{exploreData}</MarkdownRenderer>
+                >
+                  {exploreData}
+                </MarkdownRenderer>
               </div>
             </div>
           ) : isLoading ? (
@@ -154,15 +174,23 @@ export default function ExploreView({ onResearchPaper, selectedModel }: ExploreV
               <div className="ml-4">Researching...</div>
             </div>
           ) : (
-            <p className="text-center text-gray-500">No results found. Try another query.</p>
+            <p className="text-center text-gray-500">
+              No results found. Try another query.
+            </p>
           )}
         </div>
       )}
     </div>
   );
-};
+}
 
-function CitationLink({ citation, handleResearchPaper }: { citation: Citation, handleResearchPaper: (arxivId: string) => void }) {
+function CitationLink({
+  citation,
+  handleResearchPaper,
+}: {
+  citation: Citation;
+  handleResearchPaper: (arxivId: string) => void;
+}) {
   return (
     <TooltipProvider>
       <Tooltip delayDuration={100}>

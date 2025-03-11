@@ -1,4 +1,4 @@
-import ResearchContainer from '@/components/ResearchContainer';
+import ResearchContainer from "@/components/ResearchContainer";
 
 export default function Home() {
   return (

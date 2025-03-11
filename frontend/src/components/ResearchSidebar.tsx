@@ -1,15 +1,21 @@
-import React, { useState } from 'react';
-import { Button } from './ui/button';
-import { PlusIcon, XIcon, ChevronRightIcon, SearchIcon, NotepadTextIcon } from 'lucide-react';
-import { ResearchTab } from './types';
-import { ModelOption, modelOptions } from './lib/modelOptions';
+import React, { useState } from "react";
+import { Button } from "./ui/button";
+import {
+  PlusIcon,
+  XIcon,
+  ChevronRightIcon,
+  SearchIcon,
+  NotepadTextIcon,
+} from "lucide-react";
+import { ResearchTab } from "./types";
+import { ModelOption, modelOptions } from "./lib/modelOptions";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from './ui/select';
+} from "./ui/select";
 
 interface ResearchSidebarProps {
   activeTabID: string;
@@ -34,7 +40,7 @@ export default function ResearchSidebar({
   setIsOpen,
   onExploreClick,
   selectedModel,
-  onModelChange
+  onModelChange,
 }: ResearchSidebarProps) {
   const [isHovering, setIsHovering] = useState(false);
 
@@ -51,7 +57,7 @@ export default function ResearchSidebar({
   const shouldShow = isOpen || isHovering;
 
   return (
-    <div className={`h-full ${isOpen ? 'relative' : 'absolute'}`}>
+    <div className={`h-full ${isOpen ? "relative" : "absolute"}`}>
       {/* Hover area when sidebar is closed */}
       {!isOpen && (
         <div
@@ -61,22 +67,28 @@ export default function ResearchSidebar({
       )}
 
       <button
-        className={`absolute top-4 ${isOpen ? 'left-64 -ml-3' : 'left-6'} z-20 bg-white rounded-full p-1 shadow-md`}
+        className={`absolute top-4 ${isOpen ? "left-64 -ml-3" : "left-6"} z-20 bg-white rounded-full p-1 shadow-md`}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <ChevronRightIcon className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronRightIcon
+          className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+        />
       </button>
 
       <div
-        className={`w-64 bg-gray-100 border-r border-gray-200 flex flex-col h-full transition-all duration-300 ease-in-out ${shouldShow ? 'translate-x-0 opacity-100  shadow-lg' : '-translate-x-full opacity-0'
-          } ${!isOpen ? 'pt-12' : ''}`}
+        className={`w-64 bg-gray-100 border-r border-gray-200 flex flex-col h-full transition-all duration-300 ease-in-out ${
+          shouldShow
+            ? "translate-x-0 opacity-100  shadow-lg"
+            : "-translate-x-full opacity-0"
+        } ${!isOpen ? "pt-12" : ""}`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
         {/* Explore Section */}
         <div
-          className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors ${activeTabID === 'explore' ? 'bg-blue-50' : ''
-            }`}
+          className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors ${
+            activeTabID === "explore" ? "bg-blue-50" : ""
+          }`}
           onClick={onExploreClick}
         >
           <div className="flex items-center">
@@ -109,9 +121,11 @@ export default function ResearchSidebar({
               title={tab.title}
               className={`
                 relative group px-4 py-3 cursor-pointer border-l-4 flex items-center justify-between text-sm
-                ${activeTabID === tab.id
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-transparent hover:bg-gray-50'}
+                ${
+                  activeTabID === tab.id
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-transparent hover:bg-gray-50"
+                }
               `}
               onClick={() => onTabClick(tab.id)}
             >
@@ -140,10 +154,8 @@ export default function ResearchSidebar({
 
         {/* Model Selection */}
         <div className="p-4 border-b border-gray-200">
-          <Select
-            value={selectedModel}
-            onValueChange={onModelChange}
-          >
+          <div className="mb-2 text-md font-medium">𝌭 Model</div>
+          <Select value={selectedModel} onValueChange={onModelChange}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select model" />
             </SelectTrigger>

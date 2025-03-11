@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import React from 'react';
-import MarkdownRenderer from './ui/markdown';
+import React from "react";
+import MarkdownRenderer from "./ui/markdown";
 
 export default function ResearchStreamItem({
   type,
@@ -12,45 +12,45 @@ export default function ResearchStreamItem({
 }) {
   const getTypeDetails = (type: string) => {
     switch (type) {
-      case 'thought':
+      case "thought":
         return {
-          icon: '💭',
-          label: 'Thinking'
+          icon: "💭",
+          label: "Thinking",
         };
-      case 'action':
+      case "action":
         return {
-          icon: '⚙️',
-          label: 'Action'
+          icon: "⚙️",
+          label: "Action",
         };
-      case 'result':
+      case "result":
         return {
-          icon: '📊',
-          label: 'Result'
+          icon: "📊",
+          label: "Result",
         };
-      case 'summary':
+      case "summary":
         return {
-          icon: '📝',
-          label: 'Summary'
+          icon: "📝",
+          label: "Summary",
         };
-      case 'error':
+      case "error":
         return {
-          icon: '❌',
-          label: 'Error'
+          icon: "❌",
+          label: "Error",
         };
-      case 'user-question':
+      case "user-question":
         return {
-          icon: '❓',
-          label: 'Your Question'
+          icon: "❓",
+          label: "Your Question",
         };
-      case 'agent-answer':
+      case "agent-answer":
         return {
-          icon: '🤖',
-          label: 'Answer'
+          icon: "🤖",
+          label: "Answer",
         };
       default:
         return {
-          icon: 'ℹ️',
-          label: 'Info'
+          icon: "ℹ️",
+          label: "Info",
         };
     }
   };
@@ -64,9 +64,13 @@ export default function ResearchStreamItem({
         <span className="font-medium">{label}</span>
       </div>
       <div className="prose max-w-none">
-        <MarkdownRenderer containerStyle={{
-          "overflow": "scroll"
-        }}>{content}</MarkdownRenderer>
+        <MarkdownRenderer
+          containerStyle={{
+            overflow: "scroll",
+          }}
+        >
+          {content}
+        </MarkdownRenderer>
       </div>
     </div>
   );
