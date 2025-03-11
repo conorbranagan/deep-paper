@@ -41,6 +41,8 @@ class VectorStore(ABC):
 class QdrantVectorStore(VectorStore):
     """Vector store using Qdrant."""
 
+    PAPERS_COLLECTION = "papers"
+
     _instance = None
 
     @classmethod

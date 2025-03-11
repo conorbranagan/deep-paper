@@ -52,7 +52,7 @@ app = modal.App(image=image, name="paper_indexer")
 def get_indexer() -> PaperIndexer:
     embedding_config = Embedding.default()
     vector_store = QdrantVectorStore.instance(
-        collection_name="papers",
+        collection_name=QdrantVectorStore.PAPERS_COLLECTION,
         embedding_config=embedding_config,
     )
     return PaperIndexer(

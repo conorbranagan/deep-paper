@@ -166,7 +166,7 @@ Please use your available to tools to answer the following prompt.
 
 def run_research_agent(prompt, model, stream=False, verbosity_level=LogLevel.OFF):
     vector_store = QdrantVectorStore.instance(
-        collection_name="papers",
+        collection_name=QdrantVectorStore.PAPERS_COLLECTION,
         embedding_config=Embedding.default(),
     )
     agent = CodeAgent(
