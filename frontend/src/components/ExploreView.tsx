@@ -73,12 +73,6 @@ export default function ExploreView({ onResearchPaper }: ExploreViewProps) {
     setSubmittedQuery(query);
   }
 
-  const handleResearchPaper = (arxivId: string) => {
-    // Implement the research paper functionality
-    console.log(`Researching paper: ${arxivId}`);
-    // You would typically navigate to a research view or trigger another action
-  }
-
   return (
     <div className={`max-w-5xl mx-auto px-4 py-8 ${!hasSearched ? 'flex flex-col justify-center min-h-[70vh]' : ''}`}>
       <div className={`transition-all duration-300 ${hasSearched ? 'mb-8' : 'mb-0'}`}>
