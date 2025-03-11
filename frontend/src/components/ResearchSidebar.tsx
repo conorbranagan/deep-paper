@@ -8,7 +8,7 @@ import {
   NotepadTextIcon,
 } from "lucide-react";
 import { ResearchTab } from "./types";
-import { ModelOption, modelOptions } from "./lib/modelOptions";
+import { modelOptions } from "./lib/modelOptions";
 import {
   Select,
   SelectContent,

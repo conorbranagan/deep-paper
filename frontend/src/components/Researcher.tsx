@@ -8,13 +8,6 @@ import ResearchStream from "./ResearchStream";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import MarkdownRenderer from "./ui/markdown";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
 import { Topic } from "./types";
 import { makeAPIURL } from "./lib/utils";
 import { modelOptions } from "./lib/modelOptions";
