@@ -21,6 +21,10 @@ dependencies = [
     "qdrant-client>=1.13.3",
     "ddtrace>=3.2.1",
     "tiktoken>=0.9.0",
+    "modal>=0.73.92",
+    "openai>=1.65.2",
+    "pydantic>=2.10.6",
+    "torch>=2.6.0",
 ]
 
 [dependency-groups]
