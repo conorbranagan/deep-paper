@@ -53,6 +53,7 @@ def summarize_paper(paper: Paper, model: str = settings.DEFAULT_MODEL) -> PaperS
             messages=[{"role": "user", "content": formatted_prompt}],
             temperature=0.3,
             response_format=KeyTopics,
+            vertex_credentials=settings.VERTEX_CREDENTIALS_JSON,
         )
         .choices[0]
         .message.content
@@ -107,6 +108,7 @@ def summarize_topic(paper: Paper, topic: str, model: str = settings.DEFAULT_MODE
         messages=[{"role": "user", "content": formatted_prompt}],
         temperature=0.3,
         stream=True,
+        vertex_credentials=settings.VERTEX_CREDENTIALS_JSON,
     )
     for chunk in response:
         if chunk.choices[0].delta.content is not None:

@@ -14,7 +14,9 @@ AVAILABLE_MODELS = [
     "openai/gpt-4o-mini",
     "anthropic/claude-3-5-sonnet-latest",
     "anthropic/claude-3-5-haiku-latest",
-    "vertex/gemini-1.5-flash",
+    "vertex_ai/gemini-2.0-flash-001",
+    "vertex_ai/gemini-2.0-flash-lite-001",
+    "vertex_ai/gemini-2.0-pro-exp-02-05",
 ]
 
 
@@ -25,6 +27,7 @@ class Settings(BaseModel):
     LANGSMITH_API_KEY: str = os.getenv("LANGSMITH_API_KEY", "")
     QDRANT_URL: str = os.getenv("QDRANT_URL", "file://" + os.path.join(os.path.dirname(__file__), "data", "qdrant"))
     QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "")
+    VERTEX_CREDENTIALS_JSON: str = os.getenv("VERTEX_CREDENTIALS_JSON", "")
 
     def agent_model(self, model_name, temperature, **kwargs):
         if model_name.startswith("openai/"):
@@ -39,11 +42,11 @@ class Settings(BaseModel):
                 temperature=temperature,
                 api_key=self.ANTHROPIC_API_KEY,
             )
-        elif model_name.startswith("vertex/"):
+        elif model_name.startswith("vertex_ai/"):
             return LiteLLMModel(
                 model_name,
                 temperature=temperature,
-                # TODO: add vertex config
+                vertex_credentials=self.VERTEX_CREDENTIALS_JSON,
             )
         else:
             raise Exception(f"unhandled model name: {model_name}")

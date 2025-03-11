@@ -25,6 +25,7 @@ dependencies = [
     "openai>=1.65.2",
     "pydantic>=2.10.6",
     "torch>=2.6.0",
+    "google-cloud-aiplatform>=1.83.0",
 ]
 
 [dependency-groups]

@@ -106,6 +106,7 @@ def explore_query(
         messages=[{"role": "user", "content": formatted_prompt}],
         temperature=0.3,
         stream=True,
+        vertex_credentials=settings.VERTEX_CREDENTIALS_JSON,
     )
 
     buffer = ""
