@@ -98,7 +98,7 @@ def index_batch(urls: list[str]) -> None:
     print(f"Crawled: {len(urls)} papers in {datetime.now() - s}")
 
 
-@app.function(timeout=300)
+@app.function(timeout=600)
 def papers_crawler(urls: list[str]):
     start_time = datetime.now()
 
@@ -106,7 +106,7 @@ def papers_crawler(urls: list[str]):
     job_queue.put_many(urls)
 
     visited: set[str] = set([])
-    per_spawn = 20
+    per_spawn = 50
 
     # Crawl until the queue is empty
     while True:
