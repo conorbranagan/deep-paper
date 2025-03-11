@@ -29,9 +29,11 @@ END SOURCE DOCUMENTS
 
 - Please describe the topic or answer the question ONLY using the data in source documents.
 - You must inline source cituations by Citation ID with the format "(citation_id:<citation_id>)"
-- Give the response a nice headline
-- Then follow it with an answer or overview in 2-3 paragraphs.
-- Use the markdown format for the response.
+
+Formatting:
+    - Use the markdown format for the response.
+    - Make it like a report with a headling, potentially some section headers and the content.
+    - There should be no more than 4 paragraphs total.
 
 Here are some examples of valid citations:
 

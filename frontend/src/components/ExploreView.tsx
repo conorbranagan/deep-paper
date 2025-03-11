@@ -113,6 +113,7 @@ export default function ExploreView({ onResearchPaper }: ExploreViewProps) {
             <div className="prose max-w-none">
               <div className="response-container">
                 <MarkdownRenderer
+                  /* FIXME: This doesn't work for non-p types (e.g. bullets). Need children to get rendered with their types */
                   additionalComponents={{
                     p: ({ children }) => {
                       // Intersperses citations with links to the citations
@@ -169,7 +170,7 @@ export default function ExploreView({ onResearchPaper }: ExploreViewProps) {
 function CitationLink({ citation, handleResearchPaper }: { citation: Citation, handleResearchPaper: (arxivId: string) => void }) {
   return (
     <TooltipProvider>
-      <Tooltip>
+      <Tooltip delayDuration={100}>
         <TooltipTrigger asChild>
           <span className="citation-id cursor-pointer text-blue-600 font-medium">
             {citation.arxiv_id}
