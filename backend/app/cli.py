@@ -228,7 +228,7 @@ class PipelineCommand(Command):
             "--embedding",
             "-e",
             choices=["bert", "openai"],
-            default="openai",
+            default="bert",
             help="Embedding function to use",
         )
         index_parser.add_argument(
@@ -261,7 +261,7 @@ class PipelineCommand(Command):
             "--embedding",
             "-e",
             choices=["bert", "openai"],
-            default="openai",
+            default="bert",
             help="Embedding function to use",
         )
         query_parser.add_argument(
@@ -272,11 +272,34 @@ class PipelineCommand(Command):
             help="Vector store to use",
         )
 
+        # Crawl subcommand
+        crawl_parser = subcommands.add_parser(
+            "crawl", help="Crawl papers from arXiv based on a query"
+        )
+        crawl_parser.add_argument(
+            "--query",
+            "-q",
+            type=str,
+            required=True,
+            help="Query to search for papers on arXiv",
+        )
+        crawl_parser.add_argument(
+            "--limit",
+            "-l",
+            type=int,
+            default=10,
+            help="Maximum number of papers to fetch (default: 10)",
+        )
+
         return parser
 
     def execute(self, args):
         if not hasattr(args, "pipeline_command") or args.pipeline_command is None:
-            print("Please specify a subcommand: index or query")
+            print("Please specify a subcommand: index, query, or crawl")
+            return
+
+        if args.pipeline_command == "crawl":
+            self._crawl_papers(args)
             return
 
         embedding_config: EmbeddingConfig
@@ -302,6 +325,7 @@ class PipelineCommand(Command):
             self._index_papers(args, embedding_config, vector_store)
         elif args.pipeline_command == "query":
             self._run_queries(args, vector_store)
+
 
     def _index_papers(self, args, embedding_config, vector_store):
         chunking_strategy = SectionChunkingStrategy()
@@ -355,6 +379,90 @@ class PipelineCommand(Command):
                 print(f"{Fore.RED}No results found.{Style.RESET_ALL}")
 
             print(f"{Fore.MAGENTA}{'-' * 50}{Style.RESET_ALL}")
+
+    def _crawl_papers(self, args):
+        """Crawl papers from arXiv based on a query and index them."""
+        import requests
+        import xml.etree.ElementTree as ET
+        import modal
+
+        print(f"{Fore.CYAN}Searching arXiv for: '{args.query}'{Style.RESET_ALL}")
+
+        # Prepare the arXiv API URL
+        query = args.query.replace(' ', '+')
+
+        urls: list[tuple[str, str]] = []
+        start = 0
+
+        # Paginate through results if needed
+        while len(urls) < args.limit:
+            batch_size = min(10, args.limit - len(urls))
+            arxiv_url = f"http://export.arxiv.org/api/query?search_query=all:{query}&start={start}&max_results={batch_size}"
+
+            try:
+                response = requests.get(arxiv_url)
+                response.raise_for_status()
+
+                # Parse the XML response
+                root = ET.fromstring(response.content)
+
+                # Extract paper URLs
+                namespace = {'atom': 'http://www.w3.org/2005/Atom'}
+                entries = root.findall('.//atom:entry', namespace)
+
+                if not entries:
+                    break  # No more results
+
+                for entry in entries:
+                    # Get the arXiv ID and construct the URL
+                    id_element = entry.find('./atom:id', namespace)
+                    if id_element is not None and id_element.text is not None:
+                        arxiv_id = id_element.text.split('/')[-1]
+                        paper_url = f"https://arxiv.org/abs/{arxiv_id}"
+                        title_element = entry.find('./atom:title', namespace)
+                        title = str(title_element.text) if title_element is not None else "Unknown Title"
+                        title = title.replace("\n", "").replace("  ", " ")
+                        urls.append((paper_url, title))
+
+                start += len(entries)
+
+                if len(entries) < batch_size:
+                    break  # No more results
+
+            except requests.RequestException as e:
+                print(f"{Fore.RED}Error fetching papers from arXiv: {e}{Style.RESET_ALL}")
+                break
+
+        if not urls:
+            print(f"{Fore.RED}No papers found matching the query.{Style.RESET_ALL}")
+            return
+
+        # Display the papers and ask for confirmation
+        print(f"\n{Fore.GREEN}Found {len(urls)} papers:{Style.RESET_ALL}")
+        for i, (url, title) in enumerate(urls):
+            print(f"{i+1}. {Fore.YELLOW}{title}{Style.RESET_ALL}")
+            print(f"   {url}")
+
+        # Ask for confirmation
+        confirm = input(f"\n{Fore.CYAN}Do you want to crawl these {len(urls)} papers? (y/n): {Style.RESET_ALL}")
+        if confirm.lower() != 'y':
+            print(f"{Fore.RED}Crawling cancelled.{Style.RESET_ALL}")
+            return
+
+        # Extract just the URLs for the crawler
+        paper_urls = [url for url, _ in urls]
+
+        try:
+            # Spawn the Modal task
+            print(f"{Fore.CYAN}Spawning crawler job for {len(paper_urls)} papers...{Style.RESET_ALL}")
+            crawler_function = modal.Function.from_name("paper_indexer", "papers_crawler")
+            call = crawler_function.spawn(paper_urls)
+
+            print(f"{Fore.GREEN}Crawler job started with ID: {call.object_id}{Style.RESET_ALL}")
+            print(f"{Fore.YELLOW}The job is running asynchronously. Check Modal dashboard for progress.{Style.RESET_ALL}")
+
+        except Exception as e:
+            print(f"{Fore.RED}Error spawning crawler job: {e}{Style.RESET_ALL}")
 
 
 class CLI:
