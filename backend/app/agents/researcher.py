@@ -36,7 +36,7 @@ class PaperRetriever(Tool):
             return f"Unable to find paper for Arxiv ID {arxiv_id}"
 
         if query == "":
-            return f"\nPaper Contents in LaTeX\n\n{paper.latex_contents()}"
+            return f"\nPaper Contents in LaTeX\n\n{paper.latex_contents}"
 
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=500,
