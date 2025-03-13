@@ -25,7 +25,10 @@ class Settings(BaseModel):
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     LANGSMITH_API_KEY: str = os.getenv("LANGSMITH_API_KEY", "")
-    QDRANT_URL: str = os.getenv("QDRANT_URL", "file://" + os.path.join(os.path.dirname(__file__), "data", "qdrant"))
+    QDRANT_URL: str = os.getenv(
+        "QDRANT_URL",
+        "file://" + os.path.join(os.path.dirname(__file__), "data", "qdrant"),
+    )
     QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "")
     VERTEX_CREDENTIALS_JSON: str = os.getenv("VERTEX_CREDENTIALS_JSON", "")
 
@@ -66,6 +69,7 @@ def init_config():
 
     # Traces go to Langsmith
     litellm.success_callback = ["langsmith"]
+
 
 def init_dd_obs():
     patch_all()

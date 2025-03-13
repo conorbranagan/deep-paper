@@ -8,10 +8,16 @@ from app.pipeline.vector_store import VectorStore
 from app.pipeline.embedding import EmbeddingConfig
 from app.pipeline.chunk import AdaptiveChunker
 
+
 class PaperIndexer:
     """Class to index papers using a chunking strategy and vector store."""
 
-    def __init__(self, chunking_strategy: ChunkingStrategy, embedding_config: EmbeddingConfig, vector_store: VectorStore):
+    def __init__(
+        self,
+        chunking_strategy: ChunkingStrategy,
+        embedding_config: EmbeddingConfig,
+        vector_store: VectorStore,
+    ):
         self.chunker = AdaptiveChunker(chunking_strategy, embedding_config)
         self.vector_store = vector_store
 

@@ -1,6 +1,14 @@
-from smolagents import ActionStep, PlanningStep, TaskStep, SystemPromptStep, AgentText, AgentType
+from smolagents import (
+    ActionStep,
+    PlanningStep,
+    TaskStep,
+    SystemPromptStep,
+    AgentText,
+    AgentType,
+)
 from smolagents.memory import MemoryStep
 import json
+
 
 def step_as_json(step) -> dict:
     if isinstance(step, ActionStep):
@@ -35,6 +43,7 @@ def step_as_json(step) -> dict:
         }
     else:
         raise Exception(f"Unknown step type: {type(step)}")
+
 
 def is_agent_step(step) -> bool:
     return isinstance(step, (MemoryStep, AgentType))

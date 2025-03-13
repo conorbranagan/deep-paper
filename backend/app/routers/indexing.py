@@ -10,21 +10,26 @@ log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/indexing")
 
+
 class IndexPaperRequest(BaseModel):
     url: str
 
+
 class IndexPaperBatchRequest(BaseModel):
     urls: List[str]
+
 
 class IndexPaperResponse(BaseModel):
     object_id: str
     url: str
     status: str
 
+
 class IndexPaperBatchResponse(BaseModel):
     object_id: str
     urls: List[str]
     status: str
+
 
 class TaskStatusResponse(BaseModel):
     object_id: str
@@ -32,6 +37,7 @@ class TaskStatusResponse(BaseModel):
     result: Optional[dict] = None
     error: Optional[str] = None
     progress: Optional[float] = None
+
 
 @router.post("/paper", response_model=IndexPaperResponse)
 async def submit_paper_for_indexing(request: IndexPaperRequest):
@@ -41,12 +47,11 @@ async def submit_paper_for_indexing(request: IndexPaperRequest):
         call = index_job.spawn(request.url)
 
         return IndexPaperResponse(
-            object_id=call.object_id,
-            url=request.url,
-            status="queued"
+            object_id=call.object_id, url=request.url, status="queued"
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 @router.get("/tasks/{object_id}", response_model=TaskStatusResponse)
 async def get_task_status(object_id: str):
@@ -60,6 +65,7 @@ async def get_task_status(object_id: str):
         result = {"result": "pending"}
     return result
 
+
 @router.post("/papers/batch", response_model=IndexPaperBatchResponse)
 async def submit_papers_batch_for_indexing(request: IndexPaperBatchRequest):
     """Submit multiple papers for indexing"""
@@ -68,9 +74,7 @@ async def submit_papers_batch_for_indexing(request: IndexPaperBatchRequest):
         call = index_job.spawn(request.urls)
 
         return IndexPaperBatchResponse(
-            object_id=call.object_id,
-            urls=request.urls,
-            status="queued"
+            object_id=call.object_id, urls=request.urls, status="queued"
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -105,7 +105,7 @@ class SmolLLMObs:
             # value to come out as our potential output and cast it to str if it's a known type.
             agent_name = "smolagents_agent"
             if hasattr(self, "name"):
-                    agent_name = f"{self.name} (smolagents)"
+                agent_name = f"{self.name} (smolagents)"
             with LLMObs.agent(agent_name):
                 r_gen = original_run(self, *args, **kwargs)
                 output = "unknown"

@@ -43,6 +43,7 @@ Here are some examples of valid citations:
     
 """
 
+
 class Citation(BaseModel):
     title: str
     arxiv_id: str

@@ -2,32 +2,36 @@ name: Python Static Analysis
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   static-analysis:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.13'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install ruff mypy
-        
-    - name: Run ruff
-      run: |
-        ruff check backend
-        
-    - name: Run mypy
-      run: |
-        python3 -m pip install types-requests
-        mypy --config backend/mypy.ini backend
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff mypy black
+
+      - name: Run black (check only)
+        run: |
+          black --check backend
+
+      - name: Run ruff
+        run: |
+          ruff check backend
+
+      - name: Run mypy
+        run: |
+          python3 -m pip install types-requests
+          mypy --config backend/mypy.ini backend
