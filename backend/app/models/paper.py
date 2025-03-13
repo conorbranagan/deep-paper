@@ -54,8 +54,8 @@ class Paper(BaseModel):
             latex=latex.LatexPaper.from_arxiv_id(arxiv_id),
         )
 
-    def latex_contents(self) -> str:
-        return self.latex.all_contents
+    def contents(self) -> str:
+        return self.latex.tree()
 
     def print_tree(self):
         print(self.latex.tree())

@@ -2,10 +2,13 @@ import argparse
 import sys
 from abc import ABC, abstractmethod
 from colorama import Fore, Style, init as colorama_init
-
 from app.models.paper import Paper, PaperNotFound
 from app.agents.summarizer import summarize_paper, summarize_topic
-from app.agents.researcher import run_paper_agent, run_research_agent
+from app.agents.researcher import (
+    run_paper_agent,
+    run_research_agent,
+    run_deep_paper_researcher_agent,
+)
 from app.agents.explore import explore_query, PaperChunk
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
@@ -201,6 +204,48 @@ class ResearchCommand(Command):
             )
 
 
+class DeepResearchCommand(Command):
+    """Command to research a paper with an AI agent."""
+
+    @classmethod
+    def setup_parser(cls, subparsers):
+        parser = subparsers.add_parser(
+            "deep-research", help="Research a paper with an AI agent"
+        )
+        parser.add_argument(
+            "-u",
+            "--url",
+            type=str,
+            required=True,
+            help="URL for paper, optional if you want to research a specific paper",
+        )
+        parser.add_argument(
+            "-m",
+            "--model",
+            choices=AVAILABLE_MODELS,
+            default=settings.DEFAULT_MODEL,
+            help="Model to use for research",
+        )
+        parser.add_argument(
+            "-s",
+            "--steps",
+            type=int,
+            default=3,
+        )
+        return parser
+
+    def execute(self, args):
+        LLMObs.enable(ml_app="deep-paper")
+        agent_model = settings.agent_model(args.model, 0.2)
+        run_deep_paper_researcher_agent(
+            args.url,
+            agent_model,
+            stream=False,
+            verbosity_level=LogLevel.DEBUG,
+            max_steps=args.steps,
+        )
+
+
 class PipelineCommand(Command):
     """Commands for the indexing and querying pipeline."""
 
@@ -310,7 +355,6 @@ class PipelineCommand(Command):
         else:
             raise ValueError(f"Invalid embedding function: {args.embedding}")
 
-
         vector_store: VectorStore
         if args.vector_store == "qdrant":
             vector_store = QdrantVectorStore.instance(
@@ -324,7 +368,6 @@ class PipelineCommand(Command):
             self._index_papers(args, embedding_config, vector_store)
         elif args.pipeline_command == "query":
             self._run_queries(args, vector_store)
-
 
     def _index_papers(self, args, embedding_config, vector_store):
         chunking_strategy = SectionChunkingStrategy()
@@ -388,7 +431,7 @@ class PipelineCommand(Command):
         print(f"{Fore.CYAN}Searching arXiv for: '{args.query}'{Style.RESET_ALL}")
 
         # Prepare the arXiv API URL
-        query = args.query.replace(' ', '+')
+        query = args.query.replace(" ", "+")
 
         urls: list[tuple[str, str]] = []
         start = 0
@@ -406,20 +449,24 @@ class PipelineCommand(Command):
                 root = ET.fromstring(response.content)
 
                 # Extract paper URLs
-                namespace = {'atom': 'http://www.w3.org/2005/Atom'}
-                entries = root.findall('.//atom:entry', namespace)
+                namespace = {"atom": "http://www.w3.org/2005/Atom"}
+                entries = root.findall(".//atom:entry", namespace)
 
                 if not entries:
                     break  # No more results
 
                 for entry in entries:
                     # Get the arXiv ID and construct the URL
-                    id_element = entry.find('./atom:id', namespace)
+                    id_element = entry.find("./atom:id", namespace)
                     if id_element is not None and id_element.text is not None:
-                        arxiv_id = id_element.text.split('/')[-1]
+                        arxiv_id = id_element.text.split("/")[-1]
                         paper_url = f"https://arxiv.org/abs/{arxiv_id}"
-                        title_element = entry.find('./atom:title', namespace)
-                        title = str(title_element.text) if title_element is not None else "Unknown Title"
+                        title_element = entry.find("./atom:title", namespace)
+                        title = (
+                            str(title_element.text)
+                            if title_element is not None
+                            else "Unknown Title"
+                        )
                         title = title.replace("\n", "").replace("  ", " ")
                         urls.append((paper_url, title))
 
@@ -429,7 +476,9 @@ class PipelineCommand(Command):
                     break  # No more results
 
             except requests.RequestException as e:
-                print(f"{Fore.RED}Error fetching papers from arXiv: {e}{Style.RESET_ALL}")
+                print(
+                    f"{Fore.RED}Error fetching papers from arXiv: {e}{Style.RESET_ALL}"
+                )
                 break
 
         if not urls:
@@ -443,8 +492,10 @@ class PipelineCommand(Command):
             print(f"   {url}")
 
         # Ask for confirmation
-        confirm = input(f"\n{Fore.CYAN}Do you want to crawl these {len(urls)} papers? (y/n): {Style.RESET_ALL}")
-        if confirm.lower() != 'y':
+        confirm = input(
+            f"\n{Fore.CYAN}Do you want to crawl these {len(urls)} papers? (y/n): {Style.RESET_ALL}"
+        )
+        if confirm.lower() != "y":
             print(f"{Fore.RED}Crawling cancelled.{Style.RESET_ALL}")
             return
 
@@ -453,12 +504,20 @@ class PipelineCommand(Command):
 
         try:
             # Spawn the Modal task
-            print(f"{Fore.CYAN}Spawning crawler job for {len(paper_urls)} papers...{Style.RESET_ALL}")
-            crawler_function = modal.Function.from_name("paper_indexer", "papers_crawler")
+            print(
+                f"{Fore.CYAN}Spawning crawler job for {len(paper_urls)} papers...{Style.RESET_ALL}"
+            )
+            crawler_function = modal.Function.from_name(
+                "paper_indexer", "papers_crawler"
+            )
             call = crawler_function.spawn(paper_urls)
 
-            print(f"{Fore.GREEN}Crawler job started with ID: {call.object_id}{Style.RESET_ALL}")
-            print(f"{Fore.YELLOW}The job is running asynchronously. Check Modal dashboard for progress.{Style.RESET_ALL}")
+            print(
+                f"{Fore.GREEN}Crawler job started with ID: {call.object_id}{Style.RESET_ALL}"
+            )
+            print(
+                f"{Fore.YELLOW}The job is running asynchronously. Check Modal dashboard for progress.{Style.RESET_ALL}"
+            )
 
         except Exception as e:
             print(f"{Fore.RED}Error spawning crawler job: {e}{Style.RESET_ALL}")
@@ -479,6 +538,7 @@ class CLI:
             "summarize": SummarizeCommand(),
             "explore": ExploreCommand(),
             "research": ResearchCommand(),
+            "deep-research": DeepResearchCommand(),
             "pipeline": PipelineCommand(),
         }
 

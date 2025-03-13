@@ -45,7 +45,7 @@ class PaperSummary(BaseModel):
 
 def summarize_paper(paper: Paper, model: str = settings.DEFAULT_MODEL) -> PaperSummary:
     formatted_prompt = SUMMARIZE_TOPICS_PROMPT.format(
-        n_topics=5, paper_contents=paper.latex_contents()
+        n_topics=5, paper_contents=paper.contents()
     )
     topics_response = (
         litellm.completion(
@@ -68,9 +68,7 @@ def summarize_paper(paper: Paper, model: str = settings.DEFAULT_MODEL) -> PaperS
     for topic in key_topics.topics:
         topic.further_reading = [c for c in topic.further_reading if c.url is not None]
 
-    formatted_prompt = SUMMARIZE_PAPER_PROMPT.format(
-        paper_contents=paper.latex_contents()
-    )
+    formatted_prompt = SUMMARIZE_PAPER_PROMPT.format(paper_contents=paper.contents())
     summary_response = (
         litellm.completion(
             model=model,
@@ -105,7 +103,7 @@ If the topic is not mentioned in the paper return "This topic is not mentioned i
 
 def summarize_topic(paper: Paper, topic: str, model: str = settings.DEFAULT_MODEL):
     formatted_prompt = SUMMARIZE_PAPER_FOR_TOPIC_PROMPT.format(
-        topic=topic, paper_contents=paper.latex_contents()
+        topic=topic, paper_contents=paper.contents()
     )
     response = litellm.completion(
         model=model,
