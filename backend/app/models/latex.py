@@ -54,6 +54,7 @@ class LatexPaper(BaseModel):
     all_contents: str
     sections: list[SectionNode]
     citations: list[Citation]
+    citation_ids: list[str]
 
     @classmethod
     def from_arxiv_id(cls, arxiv_id: str) -> "LatexPaper":
@@ -63,38 +64,47 @@ class LatexPaper(BaseModel):
         # Inline all the \input and \include directives.
         tex_files = _inline_latex_includes(arxiv_id, raw_tex_files, meta_files)
 
+        lp = cls.from_tex_files(arxiv_id, tex_files)
+
+        # Fetch the citations using the bibtex file.
+        # For now ignore the citations if we can't find the bibtex file.
+        # FIXME: Need another approach, bbl file is an option or something else.
+        try:
+            lp.citations = fetch_citations(arxiv_id)
+        except FileNotFoundError:
+            log.warning(f"no citations found for title={lp.title}, arxvid={arxiv_id}")
+
+        return lp
+
+    @classmethod
+    def from_tex_files(cls, arxiv_id: str, tex_files: list[LatexTexFile]) -> "LatexPaper":
+        """ Primarily for testing without needing to make web requests"""
         # Extract metadata like title and abstract.
-        title, abstract = MetadataParser.parse(tex_files)
+        title, abstract, citation_ids = MetadataParser.parse(tex_files)
         if title == "":
             title = f"Unknown Title (Arxiv ID: {arxiv_id})"
 
         # Parse the sections and subsections.
         sections = SectionParser.parse(tex_files)
 
-        # Fetch the citations using the bibtex file.
-        # For now ignore the citations if we can't find the bibtex file.
-        # FIXME: Need another approach, bbl file is an option or something else.
-        try:
-            citations = fetch_citations(arxiv_id)
-        except FileNotFoundError:
-            log.warning(f"no citations found for title={title}, arxvid={arxiv_id}")
-            citations = []
-
         return LatexPaper(
             title=title,
             abstract=abstract,
             all_contents="\n".join(f.content for f in tex_files),
             sections=sections,
-            citations=citations,
+            citations=[],
+            citation_ids=citation_ids,
         )
 
-    def print_tree(self):
-        print(f"Title: {self.title}")
-        print(f"Abstract: {self.abstract}")
+    def tree(self):
+        buffer = ""
         for section in self.sections:
-            print(f"Section: {section.title}")
+            buffer += f"# Section: {section.title}\n"
+            buffer += f"  Content: {section.content.replace('\n', ' ')}\n"
             for subsection in section.subsections:
-                print(f"  Subsection: {subsection.title}")
+                buffer += f"    ## Subsection: {subsection.title}\n"
+                buffer += f"      Content: {subsection.content.replace('\n', ' ')}\n"
+        return buffer
 
 
 def _fetch_files(arxiv_id: str) -> tuple[list[LatexTexFile], list[LatexMetaFile]]:
@@ -154,17 +164,11 @@ def _inline_latex_includes(
             for possible_name in possible_filenames:
                 if possible_name in filename_to_tex:
                     target_file = filename_to_tex[possible_name]
-                    # print(
-                    #    f"Replacing \\{command}{{{filename}}} with content from {possible_name}"
-                    # )
                     merged_files.add(possible_name)
                     return target_file.content
 
             for possible_name in possible_filenames:
                 if possible_name in meta_filenames:
-                    # print(
-                    #    f"Found reference to meta file in \\{command}{{{filename}}}, but not replacing it"
-                    # )
                     return match.group(0)  # Return the original directive
 
             # If we can't find the file, just keep the original directive
@@ -249,9 +253,10 @@ class MetadataParser(latexnodes.LatexNodesVisitor):
     def __init__(self):
         self.abstract = ""
         self.title = ""
+        self.citations = set()
 
     @classmethod
-    def parse(cls, latex_files: list[LatexTexFile]) -> tuple[str, str]:
+    def parse(cls, latex_files: list[LatexTexFile]) -> tuple[str, str, list[str]]:
         title, abstract = "", ""
         for lf in latex_files:
             nodelist, _ = latexwalker.LatexWalker(lf.content).parse_content(
@@ -267,8 +272,10 @@ class MetadataParser(latexnodes.LatexNodesVisitor):
                     abstract = mp.abstract
                 if mp.title:
                     title = mp.title
+                if mp.citations:
+                    citations = mp.citations
 
-        return title, abstract
+        return title, abstract, list(citations)
 
     def visit_macro_node(self, node: latexwalker.LatexMacroNode, **kwargs):
         if node.macroname == "title":
@@ -278,6 +285,9 @@ class MetadataParser(latexnodes.LatexNodesVisitor):
                 .replace("\n", "")
                 .replace("  ", " ")
             )
+        elif node.macroname == "cite":
+            cite_chars = node.nodeargd.argnlist[3].nodelist[0].chars
+            self.citations |=  {c.strip() for c in cite_chars.split(",")}
 
     def visit_environment_node(self, node: latexwalker.LatexEnvironmentNode, **kwargs):
         if node.environmentname == "abstract":
@@ -312,6 +322,7 @@ class SectionParser(latexnodes.LatexNodesVisitor):
             nodelist, _ = latexwalker.LatexWalker(lf.content).parse_content(
                 parser=latexparser.LatexGeneralNodesParser()
             )
+
             if isinstance(nodelist, latexwalker.LatexNode):
                 nodelist = latexnodes.LatexNodeList([nodelist])
 
@@ -353,7 +364,9 @@ class SectionParser(latexnodes.LatexNodesVisitor):
             return str(node.nodeargd.argnlist[2].nodelist[0].chars)
 
     def visit(self, node, **kwargs):
-        # Called for all nodes that don't have a specific handler.
+        if not isinstance(node, latexwalker.LatexCharsNode):
+            return
+
         try:
             text = LatexNodes2Text().node_to_text(node).replace("\n", " ")
         except Exception:
@@ -410,6 +423,7 @@ class SectionParser(latexnodes.LatexNodesVisitor):
             )
             self.current_subsection_content = []
 
+
     def finish(self):
         if self.current_subsection is not None:
             self.current_subsection.content = "\n".join(self.current_subsection_content)
@@ -422,3 +436,12 @@ class SectionParser(latexnodes.LatexNodesVisitor):
         if self.current_section is not None:
             self.current_section.content = "\n".join(self.current_section_content)
             self.sections.append(self.current_section)
+
+if __name__ == "__main__":
+    # quick parsing test
+    with open("../tests/test_data/test_sections.tex", "r") as f:
+        content = f.read()
+    latex_files = [LatexTexFile(filename="test_sections.tex", content=content)]
+    paper = LatexPaper.from_tex_files("test_sections.tex", latex_files)
+    print(paper.tree())
+    #import pdb; pdb.set_trace()
