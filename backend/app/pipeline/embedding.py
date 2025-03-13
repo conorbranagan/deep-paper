@@ -14,10 +14,13 @@ import tiktoken
 
 class TextTooLongError(Exception):
     """Exception raised when a text is too long to be embedded."""
+
     pass
+
 
 class EmbeddingConfig(BaseModel):
     """Configuration for embedding functions."""
+
     name: str
     size: int
     max_tokens: int
@@ -28,9 +31,7 @@ class EmbeddingConfig(BaseModel):
 def _embed_sbert_mini_lm(text: str) -> list[float]:
     """Get embeddings using a local BERT model with HuggingFace transformers."""
     # Load model and tokenizer
-    tokenizer = AutoTokenizer.from_pretrained(
-        "sentence-transformers/all-MiniLM-L6-v2"
-    )
+    tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
     model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
     # Tokenize and prepare for the model
@@ -47,13 +48,16 @@ def _embed_sbert_mini_lm(text: str) -> list[float]:
     # Convert to numpy array with explicit type
     return list(np.array(embeddings[0].numpy(), dtype=np.float32))
 
+
 def _embed_openai_ada_002(text: str) -> list[float]:
     """Get embeddings using OpenAI's API."""
     token_encoder = tiktoken.get_encoding("cl100k_base")
     tokens = token_encoder.encode(text)
     if len(tokens) > 8192:
-            raise TextTooLongError(f"Text is too long to be embedded. {len(tokens)} tokens found.")
-    
+        raise TextTooLongError(
+            f"Text is too long to be embedded. {len(tokens)} tokens found."
+        )
+
     try:
         response = openai.embeddings.create(
             input=text,
@@ -63,6 +67,7 @@ def _embed_openai_ada_002(text: str) -> list[float]:
         return list(np.array(embedding, dtype=np.float32))
     except Exception as e:
         raise e
+
 
 class Embedding:
     OPENAI_ADA_002 = EmbeddingConfig(

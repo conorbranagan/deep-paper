@@ -10,6 +10,7 @@ from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
 from app.pipeline.embedding import Embedding
 from app.pipeline.vector_store import QdrantVectorStore
+
 log = logging.getLogger(__name__)
 
 deps = [
@@ -48,6 +49,7 @@ image = (
 
 job_queue = modal.Queue.from_name("indexer-job-queue", create_if_missing=True)
 app = modal.App(image=image, name="paper_indexer")
+
 
 def get_indexer() -> PaperIndexer:
     embedding_config = Embedding.default()
