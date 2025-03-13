@@ -77,8 +77,10 @@ class LatexPaper(BaseModel):
         return lp
 
     @classmethod
-    def from_tex_files(cls, arxiv_id: str, tex_files: list[LatexTexFile]) -> "LatexPaper":
-        """ Primarily for testing without needing to make web requests"""
+    def from_tex_files(
+        cls, arxiv_id: str, tex_files: list[LatexTexFile]
+    ) -> "LatexPaper":
+        """Primarily for testing without needing to make web requests"""
         # Extract metadata like title and abstract.
         title, abstract, citation_ids = MetadataParser.parse(tex_files)
         if title == "":
@@ -96,7 +98,7 @@ class LatexPaper(BaseModel):
             citation_ids=citation_ids,
         )
 
-    def tree(self):
+    def tree(self) -> str:
         buffer = ""
         for section in self.sections:
             buffer += f"# Section: {section.title}\n"
@@ -287,7 +289,7 @@ class MetadataParser(latexnodes.LatexNodesVisitor):
             )
         elif node.macroname == "cite":
             cite_chars = node.nodeargd.argnlist[3].nodelist[0].chars
-            self.citations |=  {c.strip() for c in cite_chars.split(",")}
+            self.citations |= {c.strip() for c in cite_chars.split(",")}
 
     def visit_environment_node(self, node: latexwalker.LatexEnvironmentNode, **kwargs):
         if node.environmentname == "abstract":
@@ -423,7 +425,6 @@ class SectionParser(latexnodes.LatexNodesVisitor):
             )
             self.current_subsection_content = []
 
-
     def finish(self):
         if self.current_subsection is not None:
             self.current_subsection.content = "\n".join(self.current_subsection_content)
@@ -436,12 +437,3 @@ class SectionParser(latexnodes.LatexNodesVisitor):
         if self.current_section is not None:
             self.current_section.content = "\n".join(self.current_section_content)
             self.sections.append(self.current_section)
-
-if __name__ == "__main__":
-    # quick parsing test
-    with open("../tests/test_data/test_sections.tex", "r") as f:
-        content = f.read()
-    latex_files = [LatexTexFile(filename="test_sections.tex", content=content)]
-    paper = LatexPaper.from_tex_files("test_sections.tex", latex_files)
-    print(paper.tree())
-    #import pdb; pdb.set_trace()
