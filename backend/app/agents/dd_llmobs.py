@@ -6,6 +6,7 @@ from smolagents import (
     UserInputTool,
     GoogleSearchTool,
     DuckDuckGoSearchTool,
+    ChatMessage,
 )
 from ddtrace.llmobs import LLMObs
 
@@ -13,14 +14,26 @@ from ddtrace.llmobs import LLMObs
 class SmolLLMObs:
     """A utility class for providing Datadog LLM Obs wrapping for Tools and Agents from the smolagents library"""
 
+    @staticmethod
+    def _serialize_output_data(output_data):
+        if isinstance(output_data, ChatMessage):
+            # the `raw` data can't be serialized so let's remove it.
+            output_data.raw = None
+            return output_data.dict()
+        return output_data
+
     def wrap_tool(cls):
         original_forward = cls.forward
 
         def wrapped_forward(self, *args, **kwargs):
             with LLMObs.tool(self.name):
-                tool_meta = {k: v for k, v in kwargs.items()}
-                LLMObs.annotate(metadata=tool_meta)
-                return original_forward(self, *args, **kwargs)
+                tool_args = {k: v for k, v in kwargs.items()}
+                result = original_forward(self, *args, **kwargs)
+                LLMObs.annotate(
+                    input_data=tool_args,
+                    output_data=result,
+                )
+                return result
 
         cls.skip_forward_signature_validation = True
         cls.forward = wrapped_forward
@@ -38,7 +51,9 @@ class SmolLLMObs:
                 step_meta = memory_step.dict()
                 annotate_args = dict(
                     input_data=step_meta.pop("model_input_messages"),
-                    output_data=step_meta.pop("model_output_message"),
+                    output_data=SmolLLMObs._serialize_output_data(
+                        step_meta.pop("model_output_message")
+                    ),
                     metadata=step_meta,
                 )
                 LLMObs.annotate(**annotate_args)
@@ -72,7 +87,11 @@ class SmolLLMObs:
                 )
             else:
                 # For non-stream we simply return that's provided.
-                with LLMObs.agent("smolagents_agent"):
+                agent_name = "smolagents_agent"
+                if hasattr(self, "name"):
+                    agent_name = self.name
+
+                with LLMObs.agent(agent_name):
                     output = original_run(self, *args, **kwargs)
                     LLMObs.annotate(
                         input_data=llmbos_metadata["task"],
@@ -84,7 +103,10 @@ class SmolLLMObs:
         def _wrapped_run_stream(self, *args, llmbos_metadata, **kwargs):
             # When it's a stream we have to wrap the generator. We pick the last
             # value to come out as our potential output and cast it to str if it's a known type.
-            with LLMObs.agent("smolagents_agent"):
+            agent_name = "smolagents_agent"
+            if hasattr(self, "name"):
+                agent_name = self.name
+            with LLMObs.agent(agent_name):
                 r_gen = original_run(self, *args, **kwargs)
                 output = "unknown"
                 last_val = None
@@ -116,6 +138,7 @@ class SmolLLMObs:
 
 
 _llmobs_is_wrapped = False
+
 
 def wrap_llmobs():
     global _llmobs_is_wrapped
