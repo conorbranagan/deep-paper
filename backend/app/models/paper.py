@@ -58,7 +58,7 @@ class Paper(BaseModel):
         return self.latex.all_contents
 
     def print_tree(self):
-        self.latex.print_tree()
+        print(self.latex.tree())
 
 
 def fetch_pdf_file(arxiv_id: int) -> PDFFile:
