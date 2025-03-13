@@ -10,7 +10,7 @@ from qdrant_client.models import PointStruct
 from pydantic import BaseModel
 
 from app.pipeline.embedding import EmbeddingConfig
-from app.pipeline.chunk import Chunk
+from app.pipeline.chunk import Document
 from app.config import settings
 
 log = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class VectorStore(ABC):
 
     @abstractmethod
     def add_documents(
-        self, chunks: list[Chunk], metadata: list[dict[str, Any]]
+        self, chunks: list[Document], metadata: list[dict[str, Any]]
     ) -> None:
         """Add documents to the vector store with optional metadata."""
         pass
@@ -103,7 +103,7 @@ class QdrantVectorStore(VectorStore):
             )
 
     def add_documents(
-        self, chunks: list[Chunk], metadata: list[dict[str, Any]]
+        self, chunks: list[Document], metadata: list[dict[str, Any]]
     ) -> None:
         """Add documents to the vector store."""
         points = [
