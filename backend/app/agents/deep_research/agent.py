@@ -15,7 +15,6 @@ from app.pipeline.vector_store import QdrantVectorStore
 from app.pipeline.embedding import Embedding
 from app.agents.dd_llmobs import wrap_llmobs
 from app.agents.deep_research.message import (
-    ResearchStatus,
     ResearchStatusMessage,
     ResearchContentMessage,
     ResearchError,
@@ -45,13 +44,13 @@ You will analyze the paper at: {arxiv_url}.
 2. Explore external sources which reference this paper:
    a. Search for blog posts, articles, and academic discussions that cite the Arxiv paper URL. Make sure you fetch the pages you find most interesting.
    b. Focus on sources from Substack, Medium, and academic blogs.
-   c. Collect at least 3-5 relevant external sources that provide substantial analysis or discussion of the paper.
+   c. Collect at least 5 relevant external sources that provide substantial analysis or discussion of the paper.
    d. Try to find both sources that are around the time of the paper and those that are newer where they put it in context.
 
-3. Write a report of your findings. Structure your research report as follows:
+3. Write a report of your findings using Markdown formatting. Structure your research report as follows:
    a. Introduction: Provide an overview of the topic and its significance.
-   b. Background: Offer necessary context and foundational information.
-   c. Main Body: Discuss the key findings from your sources, organized by themes or subtopics.
+   b. Background: Offer necessary context and foundational information, use the paper's content to generate this.
+   c. Key Findings: Discuss the key findings from your sources, organized by themes or subtopics.
    d. Discussion: Analyze the implications of the research, highlight any controversies or debates, and discuss potential future directions.
    e. Conclusion: Summarize the main points and provide closing thoughts.
 
@@ -62,8 +61,30 @@ Make sure code blocks are formatted correctly using py.
 """
 
 
+# HACK: This is a way to inject a status for writing the research report. When
+# we are done browsing we _should_ be moving on to the report. This doesn't
+# quite work if there are multiple iterations on the web browser agent though.
+def wrap_browser_agent(
+    cls: ToolCallingAgent, message_queue: queue.Queue, queue_lock: threading.Lock
+):
+    original_provide_final_answer = cls.provide_final_answer
+
+    def wrapped_provide_final_answer(self, *args, **kwargs) -> str:
+        with queue_lock:
+            message_queue.put(
+                ResearchStatusMessage(
+                    type="status",
+                    message="Writing research report...",
+                )
+            )
+        return str(original_provide_final_answer(self, *args, **kwargs))
+
+    cls.provide_final_answer = wrapped_provide_final_answer
+    return cls
+
+
 def run_agent(
-    url: str, model: LiteLLMModel, verbosity_level=LogLevel.OFF, max_steps=3
+    url: str, model: LiteLLMModel, verbosity_level=LogLevel.OFF, max_steps=10
 ) -> Generator[ResearchMessage, None, None]:
     collection_name = f"paper_sources_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
     embedding_config = Embedding.default()
@@ -83,7 +104,7 @@ def run_agent(
         name="PaperAnalyzer",
         tools=[PaperRetriever(message_queue, queue_lock)],
         model=model,
-        max_steps=4,
+        max_steps=2,
         verbosity_level=verbosity_level,
         description="A team member agent who can analyze Arxiv papers. Provide it with an Arxiv URL and any areas you want it to focus on.",
     )
@@ -98,10 +119,10 @@ def run_agent(
             ),
         ],
         model=model,
-        max_steps=4,
+        max_steps=7,
         verbosity_level=verbosity_level,
         description="""A team member that will search the internet to answer your question.
-            Ask them for all your questions that require browsing the web.
+            Ask them for all your questions that require browsing the web. Ensure they visit the most important pages they find before including them in the response.
             Provide them as much context as possible, in particular if you need to search on a specific timeframe!
             And don't hesitate to provide them with a complex search task, like finding a difference between two webpages.
             Your request must be a real sentence, not a google search! Like "Find me this information (...)" rather than a few keywords.""",
@@ -109,8 +130,10 @@ def run_agent(
     browser_agent.prompt_templates["managed_agent"][
         "task"
     ] += """
-    In your final response you MUST include URLs alongside any other information about the sources you found.
+        In order to provide a comprehensive answer, you must visit the most important pages you find.
+        In your final response you MUST include URLs alongside any other information about the sources you found.
     """
+    browser_agent = wrap_browser_agent(browser_agent, message_queue, queue_lock)
 
     manager_agent = CodeAgent(
         name="Manager",
@@ -122,15 +145,12 @@ def run_agent(
     )
     prompt = DEEP_RESEARCH_PROMPT_TPL.format(arxiv_url=url)
 
-    yield ResearchStatusMessage(
-        type="status", status=ResearchStatus.STARTING, message="Starting..."
-    )
+    yield ResearchStatusMessage(type="status", message="Starting the agent...")
 
     # Function to run the agent in a separate thread
     def run_agent():
         try:
             result = manager_agent.run(prompt, stream=False)
-            # Put the final result in the queue
             with queue_lock:
                 message_queue.put(
                     ResearchContentMessage(type="content", content=result)
@@ -145,14 +165,11 @@ def run_agent(
                     )
                 )
         finally:
-            # Signal that the agent is done
             agent_done.set()
-            # Add a final status message
             with queue_lock:
                 message_queue.put(
                     ResearchStatusMessage(
                         type="status",
-                        status=ResearchStatus.DONE,
                         message="Research completed",
                     )
                 )

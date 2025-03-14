@@ -7,11 +7,8 @@ import { makeAPIURL } from "./lib/utils";
 import MarkdownRenderer from "./ui/markdown";
 import { useEventSource } from "./utils/EventSourceManager";
 
-type ResearchStatus = "starting" | "browsing" | "analyzing" | "done";
-
 type ResearchStatusMessage = {
   type: "status";
-  status: ResearchStatus;
   message: string;
 };
 
@@ -77,16 +74,28 @@ export default function DeepResearchView({
   });
   const isLoading = status === "connecting" || status === "streaming";
 
-  const content = messages
+  let content = messages
     .filter((msg) => msg.type === "content")
     .map((msg) => msg.content)
     .join("");
 
-  const sources = messages.filter((msg) => msg.type === "source");
+  // Sometimes the content is wrapped in code braces, I don't know why. Let's remove them.
+  if (content.startsWith("```\n") && content.endsWith("\n```")) {
+    content = content.slice(4, -3);
+  }
 
+  const sources = messages.filter((msg) => msg.type === "source");
   const lastStatus = messages
     .filter((msg) => msg.type === "status")
     .pop() as ResearchStatusMessage;
+
+  // Add state for tracking expanded sources view
+  const [showAllSources, setShowAllSources] = useState<boolean>(false);
+
+  // Get the most recent 3 sources (or all if less than 3)
+  const visibleSources = showAllSources
+    ? sources.reverse()
+    : sources.slice(Math.max(0, sources.length - 3));
 
   return (
     <div
@@ -155,9 +164,33 @@ export default function DeepResearchView({
           {/* Sources Section */}
           {sources.length > 0 && (
             <div className="mb-6 border rounded-lg p-4 bg-gray-50">
-              <h3 className="text-lg font-semibold mb-3">Sources</h3>
-              <div className="space-y-3">
-                {sources.map((source, index) => (
+              <div
+                onClick={() =>
+                  sources.length > 3 && setShowAllSources(!showAllSources)
+                }
+                className={`flex justify-between items-center mb-3 ${sources.length > 3 ? "cursor-pointer hover:bg-gray-100 p-2 rounded-md transition-colors" : ""}`}
+              >
+                <h3 className="text-lg font-semibold">
+                  {`${sources.length}`}{" "}
+                  {sources.length === 1 ? "Source" : "Sources"}
+                </h3>
+                {sources.length > 3 && (
+                  <span className="text-sm text-blue-600">
+                    {showAllSources
+                      ? "Show Less"
+                      : `Show All (${sources.length})`}
+                  </span>
+                )}
+              </div>
+              <div
+                className="space-y-3 overflow-hidden transition-all duration-300 ease-in-out"
+                style={{
+                  maxHeight: showAllSources
+                    ? `${sources.length * 90}px`
+                    : "260px",
+                }}
+              >
+                {visibleSources.map((source, index) => (
                   <div
                     key={index}
                     className="flex items-center gap-3 p-2 border rounded bg-white"
@@ -202,7 +235,7 @@ export default function DeepResearchView({
                 <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
               </div>
               <div className="ml-4">
-                {lastStatus ? lastStatus.message : "Initializing..."}
+                {lastStatus ? lastStatus.message : "Loading..."}
               </div>
             </div>
           ) : (
