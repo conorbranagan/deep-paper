@@ -40,6 +40,9 @@ interface DeepResearchViewProps {
   selectedModel: string;
 }
 
+// Add a type for browser options
+type BrowserType = "text" | "webagent";
+
 function isValidArxivUrl(url: string): boolean {
   return url.startsWith("https://arxiv.org/abs/");
 }
@@ -51,6 +54,7 @@ export default function DeepResearchView({
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState<boolean>(false);
   const [submittedURL, setSubmittedURL] = useState<string>("");
+  const [browserType, setBrowserType] = useState<BrowserType>("text");
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -69,6 +73,7 @@ export default function DeepResearchView({
     queryParams: {
       url: submittedURL,
       model: selectedModel,
+      web_agent: browserType === "webagent" ? "true" : "false",
     },
     enabled: submittedURL.length > 0,
   });
@@ -123,22 +128,36 @@ export default function DeepResearchView({
           }}
           className="max-w-2xl mx-auto"
         >
-          <div className="relative">
-            <input
-              ref={inputRef}
-              type="text"
-              value={url}
-              onChange={(e) => setURL(e.target.value)}
-              placeholder="Enter an ArXiv paper URL..."
-              className="w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
-              disabled={isLoading}
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-              <Search
-                className={`h-5 w-5 ${isLoading ? "text-gray-400" : "text-gray-600"}`}
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-grow">
+              <input
+                ref={inputRef}
+                type="text"
+                value={url}
+                onChange={(e) => setURL(e.target.value)}
+                placeholder="Enter an ArXiv paper URL..."
+                className="w-full px-4 py-3 pr-12 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+                disabled={isLoading}
               />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <Search
+                  className={`h-5 w-5 ${isLoading ? "text-gray-400" : "text-gray-600"}`}
+                />
+              </div>
             </div>
+
+            <select
+              value={browserType}
+              onChange={(e) => setBrowserType(e.target.value as BrowserType)}
+              className="w-30 px-2 py-4 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              disabled={isLoading}
+              aria-label="Browser Type"
+            >
+              <option value="text">Text Browser</option>
+              <option value="webagent">WebAgent</option>
+            </select>
           </div>
+
           {error && <p className="text-red-500 mt-2 text-center">{error}</p>}
           {streamError && (
             <p className="text-red-500 mt-2 text-center">{streamError}</p>

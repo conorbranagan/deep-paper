@@ -24,8 +24,8 @@ from app.agents.deep_research.tools import (
     PaperRetriever,
     GoogleSearchTool,
     VisitWebpageTool,
-    QueryFindingsTool,
 )
+from app.agents.deep_research.web_tools import WebAgentTool
 
 wrap_llmobs()
 
@@ -85,10 +85,56 @@ def wrap_browser_agent(
     return cls
 
 
-def run_agent(
+def run_agent_webtool(
     url: str, model: LiteLLMModel, verbosity_level=LogLevel.OFF, max_steps=10
-) -> Generator[ResearchMessage, None, None]:
-    yield ResearchStatusMessage(type="status", message="Starting the agent...")
+):
+    collection_name = f"paper_sources_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
+    embedding_config = Embedding.default()
+    vector_store = QdrantVectorStore.instance(
+        collection_name=collection_name,
+        embedding_config=embedding_config,
+    )
+
+    message_queue: queue.Queue[ResearchMessage] = queue.Queue()
+    queue_lock = threading.Lock()
+
+    browser_agent = ToolCallingAgent(
+        name="WebBrowser",
+        tools=[
+            WebAgentTool(message_queue, queue_lock),
+        ],
+        model=model,
+        max_steps=7,
+        verbosity_level=verbosity_level,
+        description="""A team member that will search the internet to answer your question.
+            Ask them for all your questions that require browsing the web. Ensure they visit the most important pages they find before including them in the response.
+            Provide them as much context as possible, in particular if you need to search on a specific timeframe!
+            And don't hesitate to provide them with a complex search task, like finding a difference between two webpages.
+            Your request must be a real sentence, not a google search! Like "Find me this information (...)" rather than a few keywords.""",
+    )
+    browser_agent.prompt_templates["managed_agent"][
+        "task"
+    ] += """
+        In order to provide a comprehensive answer, you must visit the most important pages you find.
+        In your final response you MUST include URLs alongside any other information about the sources you found.
+    """
+
+    return _run_agent(
+        url,
+        model,
+        browser_agent,
+        message_queue,
+        queue_lock,
+        vector_store,
+        embedding_config,
+        verbosity_level,
+        max_steps,
+    )
+
+
+def run_agent_headless(
+    url: str, model: LiteLLMModel, verbosity_level=LogLevel.OFF, max_steps=10
+):
     collection_name = f"paper_sources_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
     embedding_config = Embedding.default()
     vector_store = QdrantVectorStore.instance(
@@ -99,18 +145,8 @@ def run_agent(
     # Create a thread-safe queue for messages
     message_queue: queue.Queue[ResearchMessage] = queue.Queue()
     # Create a flag to signal when the agent is done
-    agent_done = threading.Event()
     # Create a lock for thread safety
     queue_lock = threading.Lock()
-
-    paper_agent = ToolCallingAgent(
-        name="PaperAnalyzer",
-        tools=[PaperRetriever(message_queue, queue_lock)],
-        model=model,
-        max_steps=2,
-        verbosity_level=verbosity_level,
-        description="A team member agent who can analyze Arxiv papers. Provide it with an Arxiv URL and any areas you want it to focus on.",
-    )
     browser_agent = ToolCallingAgent(
         name="WebBrowser",
         tools=[
@@ -133,9 +169,46 @@ def run_agent(
         In your final response you MUST include URLs alongside any other information about the sources you found.
     """
     browser_agent = wrap_browser_agent(browser_agent, message_queue, queue_lock)
+
+    return _run_agent(
+        url,
+        model,
+        browser_agent,
+        message_queue,
+        queue_lock,
+        vector_store,
+        embedding_config,
+        verbosity_level,
+        max_steps,
+    )
+
+
+def _run_agent(
+    url: str,
+    model: LiteLLMModel,
+    browser_agent: ToolCallingAgent,
+    message_queue: queue.Queue,
+    queue_lock: threading.Lock,
+    vector_store: QdrantVectorStore,
+    embedding_config: Embedding,
+    verbosity_level=LogLevel.OFF,
+    max_steps=10,
+) -> Generator[ResearchMessage, None, None]:
+    yield ResearchStatusMessage(type="status", message="Starting the agent...")
+
+    agent_done = threading.Event()
+    paper_agent = ToolCallingAgent(
+        name="PaperAnalyzer",
+        tools=[PaperRetriever(message_queue, queue_lock)],
+        model=model,
+        max_steps=2,
+        verbosity_level=verbosity_level,
+        description="A team member agent who can analyze Arxiv papers. Provide it with an Arxiv URL and any areas you want it to focus on.",
+    )
+
     manager_agent = CodeAgent(
         name="Manager",
-        tools=[QueryFindingsTool(vector_store, embedding_config)],
+        tools=[],
         model=model,
         max_steps=max_steps,
         verbosity_level=verbosity_level,
@@ -144,7 +217,7 @@ def run_agent(
     prompt = DEEP_RESEARCH_PROMPT_TPL.format(arxiv_url=url)
 
     # Function to run the agent in a separate thread
-    def run_agent():
+    def run_agent_thread():
         try:
             result = manager_agent.run(prompt, stream=False)
             with queue_lock:
@@ -171,7 +244,7 @@ def run_agent(
                 )
 
     # Start the agent in thread, as daemon so it exits when main thread exits
-    agent_thread = threading.Thread(target=run_agent)
+    agent_thread = threading.Thread(target=run_agent_thread)
     agent_thread.daemon = True
 
     agent_thread.start()
