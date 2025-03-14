@@ -189,7 +189,7 @@ export default function ExploreView({
                                     citation={citation}
                                     handleResearchPaper={(arxivId) =>
                                       onResearchPaper(
-                                        `https://arxiv.org/abs/${arxivId}`
+                                        `https://arxiv.org/abs/${arxivId}`,
                                       )
                                     }
                                   />

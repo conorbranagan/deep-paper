@@ -97,7 +97,7 @@ export default function DeepResearchView({
       >
         {!hasSearched && (
           <h1 className="font-bold text-center text-4xl mb-3">
-            Deep Research a Paper
+            Research a Paper
           </h1>
         )}
 
@@ -109,7 +109,7 @@ export default function DeepResearchView({
             }
             if (!isValidArxivUrl(url)) {
               setError(
-                "Please enter a valid ArXiv paper URL (for example: https://arxiv.org/abs/2303.01360)"
+                "Please enter a valid ArXiv paper URL (for example: https://arxiv.org/abs/2303.01360)",
               );
               return;
             }
@@ -140,6 +140,12 @@ export default function DeepResearchView({
             <p className="text-red-500 mt-2 text-center">{streamError}</p>
           )}
         </form>
+      </div>
+      <div className="mt-8">
+        <p className="text-gray-500 text-center">
+          Analyze a paper and comb the web for related resources to generate a
+          research report.
+        </p>
       </div>
 
       {hasSearched && (
