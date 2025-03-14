@@ -63,7 +63,11 @@ export default function DeepResearchView({
     }
   }, [hasSearched]);
 
-  const { messages, status, streamError } = useEventSource<ResearchMessage>({
+  const {
+    messages,
+    status,
+    error: streamError,
+  } = useEventSource<ResearchMessage>({
     url: makeAPIURL("api/paper/deep-research"),
     queryParams: {
       url: submittedURL,
@@ -132,6 +136,9 @@ export default function DeepResearchView({
             </div>
           </div>
           {error && <p className="text-red-500 mt-2 text-center">{error}</p>}
+          {streamError && (
+            <p className="text-red-500 mt-2 text-center">{streamError}</p>
+          )}
         </form>
       </div>
 
