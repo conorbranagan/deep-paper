@@ -23,7 +23,7 @@ from app.agents.deep_research.message import (
 from app.agents.deep_research.tools import (
     PaperRetriever,
     GoogleSearchTool,
-    PersistingVisitWebpageTool,
+    VisitWebpageTool,
     QueryFindingsTool,
 )
 
@@ -115,10 +115,7 @@ def run_agent(
         name="WebBrowser",
         tools=[
             GoogleSearchTool(message_queue, queue_lock),
-            # FakeGoogleSearchTool(message_queue, queue_lock),
-            PersistingVisitWebpageTool(
-                vector_store, embedding_config, message_queue, queue_lock
-            ),
+            VisitWebpageTool(vector_store, embedding_config, message_queue, queue_lock),
         ],
         model=model,
         max_steps=7,

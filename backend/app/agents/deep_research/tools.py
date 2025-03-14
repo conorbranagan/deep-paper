@@ -91,74 +91,7 @@ class PaperRetriever(ResearchTool):
 
 
 @SmolLLMObs.wrapped_tool
-class FakeGoogleSearchTool(ResearchTool):
-    name = "GoogleSearchTool"  # Keeping named so Agent is not aware this is fake.
-    description = (
-        "A tool that searches the web for information to help with the research report."
-    )
-    inputs = {
-        "query": {
-            "type": "string",
-            "description": "The query to search the web for",
-        },
-    }
-    output_type = "string"
-
-    results_by_keywords = {
-        (
-            "mmlu",
-            "2009.03300",
-            "Measuring Massive Multitask Language Understanding",
-        ): """
-0. |MMLU: Measuring Massive Multitask language Understanding ...](https://sh-tsang.medium.com/brief-review-mmlu-measuring-massive-multitask-language-understanding-7b18e7cbbeab)
-Source: Medium · Sik-Ho Tsang
-
-MMLU Dataset With 57 Tasks. "Brief Review — MMLU: Measuring Massive Multitask language Understanding" is published by Sik-Ho Tsang.
-
-1. |What Is Multi-Task Language Understanding or MMLU?](https://cobusgreyling.medium.com/what-is-multi-task-language-understanding-or-mmlu-22e93e036c49)
-Source: Medium
-
-Measuring Massive Multitask Language Understanding. We propose a new test to measure a text model's multitask accuracy. The test covers 57 tasks including ...
-
-2. |Massive Multitask Language Understanding (MMLU) in ...](https://medium.com/thedeephub/massive-multitask-language-understanding-mmlu-in-gpt-4-gemini-and-mistral-845e1dd4f77d)
-Source: Medium
-
-3.- |2009.03300] Measuring Massive Multitask Language Understanding (arxiv.org). 4.- Gemini — Google DeepMind. 5.- MMLU Dataset | Papers With Code. 6.- An ...
-
-3. |Preliminary Analysis of MMLU-by-task - Corey Morris](https://coreymorrisdata.medium.com/preliminary-analysis-of-mmlu-evaluation-data-insights-from-500-open-source-models-e67885aa364b)
-Source: Medium · Corey Morris
-
-Recently Hugging face released a dataset of evaluation results for the Measuring Massive Multitask Language Understanding (MMLU) evaluation.
-
-4. |Benchmark of LLMs (Part 2): MMLU, HELM, Eleuthera AI ...](https://medium.com/aimonks/benchmark-of-llms-part-2-mmlu-helm-eleuthera-ai-lm-eval-e6fc54053e3d)
-Source: Medium · Michael X
-
-|15] Hendrycks D, Burns C, Basart S, et al. Measuring massive multitask language understanding|J]. arXiv preprint arXiv:2009.03300, 2020. |16] Zellers R, ...
-
-5. |Understanding Quality Metrics in Language Models: MMLU ...](https://medium.com/@jx.demesa/understanding-quality-metrics-in-language-models-mmlu-gpqa-math-and-more-3d80fba17906)
-Source: Medium
-
-Hendrycks, D., Burns, C., Basart, S., Zou, H., Song, C., & Dietterich, T. (2021). Measuring Massive Multitask Language Understanding. arXiv preprint arXiv: ...
-"""
-    }
-
-    def forward(self, query: str) -> str:
-        with self.queue_lock:
-            self.message_queue.put(
-                ResearchStatusMessage(
-                    type="status",
-                    message="Browsing the web...",
-                )
-            )
-
-        for keywords, results in self.results_by_keywords.items():
-            if any(keyword in query for keyword in keywords):
-                return results
-        return "No results found for query: " + query
-
-
-@SmolLLMObs.wrapped_tool
-class PersistingVisitWebpageTool(ResearchTool):
+class VisitWebpageTool(ResearchTool):
     name = "visit_webpage"  # Keeping named so Agent is not aware this is different from just visiting the page.
     description = "Visits a webpage at the given url and reads its content as a markdown string. Use this to browse webpages."
     inputs = {
