@@ -14,7 +14,7 @@ export default function ResearchContainer() {
   const [activeTabID, setActiveTabID] = useState<string>("explore");
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [selectedModel, setSelectedModel] = useState<string>(
-    modelOptions[0].id,
+    modelOptions[0].id
   );
 
   // Load tabs and settings from localStorage on initial render
@@ -99,7 +99,7 @@ export default function ResearchContainer() {
         setTabs((prevTabs) => [...prevTabs, newTab]);
       }
     },
-    [generateTabID],
+    [generateTabID]
   );
 
   const initializeDefaultTab = () => {
@@ -148,10 +148,10 @@ export default function ResearchContainer() {
   const handleLoadingChange = useCallback(
     (tabId: string, isLoading: boolean) => {
       setTabs((prevTabs) =>
-        prevTabs.map((tab) => (tab.id === tabId ? { ...tab, isLoading } : tab)),
+        prevTabs.map((tab) => (tab.id === tabId ? { ...tab, isLoading } : tab))
       );
     },
-    [],
+    []
   );
 
   const handleTitleChange = useCallback((tabId: string, title: string) => {
@@ -159,8 +159,8 @@ export default function ResearchContainer() {
 
     setTabs((prevTabs) =>
       prevTabs.map((tab) =>
-        tab.id === tabId ? { ...tab, title: title || tab.title } : tab,
-      ),
+        tab.id === tabId ? { ...tab, title: title || tab.title } : tab
+      )
     );
   }, []);
 
@@ -189,10 +189,7 @@ export default function ResearchContainer() {
             selectedModel={selectedModel}
           />
         ) : activeTabID === "deep-research" ? (
-          <DeepResearchView
-            onResearchPaper={onResearchPaper}
-            selectedModel={selectedModel}
-          />
+          <DeepResearchView selectedModel={selectedModel} />
         ) : (
           <Researcher
             key={tabs.find((tab) => tab.id === activeTabID)?.id}
