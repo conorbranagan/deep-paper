@@ -2,7 +2,6 @@ import logging
 import os
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import litellm
 from smolagents import LiteLLMModel
 from ddtrace.llmobs import LLMObs
 from ddtrace import patch_all
@@ -68,7 +67,7 @@ def init_config():
     init_dd_obs()
 
     # Traces go to Langsmith
-    litellm.success_callback = ["langsmith"]
+    # litellm.success_callback = ["langsmith"]
 
 
 def init_dd_obs():

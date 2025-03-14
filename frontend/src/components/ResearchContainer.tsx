@@ -7,13 +7,14 @@ import ExploreView from "./ExploreView";
 import { ResearchTab } from "./types";
 import { v4 as uuidv4 } from "uuid";
 import { modelOptions } from "./lib/modelOptions";
+import DeepResearchView from "./DeepResearchView";
 
 export default function ResearchContainer() {
   const [tabs, setTabs] = useState<ResearchTab[]>([]);
   const [activeTabID, setActiveTabID] = useState<string>("explore");
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [selectedModel, setSelectedModel] = useState<string>(
-    modelOptions[0].id,
+    modelOptions[0].id
   );
 
   // Load tabs and settings from localStorage on initial render
@@ -98,7 +99,7 @@ export default function ResearchContainer() {
         setTabs((prevTabs) => [...prevTabs, newTab]);
       }
     },
-    [generateTabID],
+    [generateTabID]
   );
 
   const initializeDefaultTab = () => {
@@ -147,10 +148,10 @@ export default function ResearchContainer() {
   const handleLoadingChange = useCallback(
     (tabId: string, isLoading: boolean) => {
       setTabs((prevTabs) =>
-        prevTabs.map((tab) => (tab.id === tabId ? { ...tab, isLoading } : tab)),
+        prevTabs.map((tab) => (tab.id === tabId ? { ...tab, isLoading } : tab))
       );
     },
-    [],
+    []
   );
 
   const handleTitleChange = useCallback((tabId: string, title: string) => {
@@ -158,32 +159,25 @@ export default function ResearchContainer() {
 
     setTabs((prevTabs) =>
       prevTabs.map((tab) =>
-        tab.id === tabId ? { ...tab, title: title || tab.title } : tab,
-      ),
+        tab.id === tabId ? { ...tab, title: title || tab.title } : tab
+      )
     );
   }, []);
-
-  const handleExploreClick = () => {
-    setActiveTabID("explore");
-  };
-
-  const handleModelChange = (modelId: string) => {
-    setSelectedModel(modelId);
-  };
 
   return (
     <div className="flex h-screen overflow-hidden">
       <ResearchSidebar
         activeTabID={activeTabID}
         tabs={tabs}
-        onTabClick={setActiveTabID}
+        onTabClick={(tabId: string) => setActiveTabID(tabId)}
         onAddTab={handleAddTab}
         onDeleteTab={handleDeleteTab}
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
-        onExploreClick={handleExploreClick}
+        onExploreClick={() => setActiveTabID("explore")}
+        onDeepResearchClick={() => setActiveTabID("deep-research")}
         selectedModel={selectedModel}
-        onModelChange={handleModelChange}
+        onModelChange={(modelId: string) => setSelectedModel(modelId)}
       />
 
       <div
@@ -191,6 +185,11 @@ export default function ResearchContainer() {
       >
         {activeTabID === "explore" ? (
           <ExploreView
+            onResearchPaper={onResearchPaper}
+            selectedModel={selectedModel}
+          />
+        ) : activeTabID === "deep-research" ? (
+          <DeepResearchView
             onResearchPaper={onResearchPaper}
             selectedModel={selectedModel}
           />

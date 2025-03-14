@@ -6,6 +6,7 @@ import {
   ChevronRightIcon,
   SearchIcon,
   NotepadTextIcon,
+  MicroscopeIcon,
 } from "lucide-react";
 import { ResearchTab } from "./types";
 import { modelOptions } from "./lib/modelOptions";
@@ -26,6 +27,7 @@ interface ResearchSidebarProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   onExploreClick: () => void;
+  onDeepResearchClick: () => void;
   selectedModel: string;
   onModelChange: (modelId: string) => void;
 }
@@ -39,6 +41,7 @@ export default function ResearchSidebar({
   isOpen,
   setIsOpen,
   onExploreClick,
+  onDeepResearchClick,
   selectedModel,
   onModelChange,
 }: ResearchSidebarProps) {
@@ -84,6 +87,19 @@ export default function ResearchSidebar({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
+        {/* Deep Research Section */}
+        <div
+          className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors ${
+            activeTabID === "deep-research" ? "bg-blue-50" : ""
+          }`}
+          onClick={onDeepResearchClick}
+        >
+          <div className="flex items-center">
+            <MicroscopeIcon className="h-4 w-4 mr-2" />
+            <h2 className="font-semibold">Deep Research</h2>
+          </div>
+        </div>
+
         {/* Explore Section */}
         <div
           className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors ${

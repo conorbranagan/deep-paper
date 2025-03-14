@@ -7,8 +7,8 @@ from app.agents.summarizer import summarize_paper, summarize_topic
 from app.agents.researcher import (
     run_paper_agent,
     run_research_agent,
-    run_deep_paper_researcher_agent,
 )
+from app.agents import deep_research
 from app.agents.explore import explore_query, PaperChunk
 from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
@@ -232,18 +232,24 @@ class DeepResearchCommand(Command):
             type=int,
             default=3,
         )
+        parser.add_argument(
+            "-v",
+            "--verbose",
+            action="store_true",
+            help="Verbose output",
+        )
         return parser
 
     def execute(self, args):
         LLMObs.enable(ml_app="deep-paper")
         agent_model = settings.agent_model(args.model, 0.2)
-        run_deep_paper_researcher_agent(
+        for chunk in deep_research.run_agent(
             args.url,
             agent_model,
-            stream=False,
-            verbosity_level=LogLevel.DEBUG,
+            verbosity_level=LogLevel.OFF if not args.verbose else LogLevel.INFO,
             max_steps=args.steps,
-        )
+        ):
+            print(chunk)
 
 
 class PipelineCommand(Command):
