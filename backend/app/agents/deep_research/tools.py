@@ -16,7 +16,6 @@ from app.pipeline.vector_store import VectorStore
 from app.models.paper import Paper, PaperNotFound
 from app.agents.dd_llmobs import SmolLLMObs
 from app.agents.deep_research.message import (
-    ResearchStatus,
     ResearchStatusMessage,
     ResearchSourceMessage,
 )
@@ -55,19 +54,19 @@ class PaperRetriever(ResearchTool):
     output_type = "string"
 
     def forward(self, arxiv_id: str, query: str) -> str:
+        try:
+            paper = Paper.from_arxiv_id(arxiv_id)
+        except PaperNotFound:
+            return f"Unable to find paper for Arxiv ID {arxiv_id}"
+
         if self.message_queue and self.queue_lock:
             with self.queue_lock:
                 self.message_queue.put(
                     ResearchStatusMessage(
                         type="status",
-                        status=ResearchStatus.ANALYZING,
-                        message=f"Analyzing arXiv:{arxiv_id}...",
+                        message=f'Analyzing "{paper.latex.title}" (arXiv:{arxiv_id})...',
                     )
                 )
-        try:
-            paper = Paper.from_arxiv_id(arxiv_id)
-        except PaperNotFound:
-            return f"Unable to find paper for Arxiv ID {arxiv_id}"
 
         if query is None or not query.strip():
             return f"\nPaper Contents\n\n{paper.contents()}"
@@ -93,14 +92,6 @@ class PaperRetriever(ResearchTool):
 
 @SmolLLMObs.wrapped_tool
 class FakeGoogleSearchTool(ResearchTool):
-    def __init__(
-        self,
-        message_queue: queue.Queue,
-        queue_lock: threading.Lock,
-    ):
-        super().__init__(message_queue, queue_lock)
-        self.sent_status = False
-
     name = "GoogleSearchTool"  # Keeping named so Agent is not aware this is fake.
     description = (
         "A tool that searches the web for information to help with the research report."
@@ -152,16 +143,13 @@ Hendrycks, D., Burns, C., Basart, S., Zou, H., Song, C., & Dietterich, T. (2021)
     }
 
     def forward(self, query: str) -> str:
-        if not self.sent_status:
-            with self.queue_lock:
-                self.message_queue.put(
-                    ResearchStatusMessage(
-                        type="status",
-                        status=ResearchStatus.BROWSING,
-                        message="Browsing the web...",
-                    )
+        with self.queue_lock:
+            self.message_queue.put(
+                ResearchStatusMessage(
+                    type="status",
+                    message="Browsing the web...",
                 )
-            self.sent_status = True
+            )
 
         for keywords, results in self.results_by_keywords.items():
             if any(keyword in query for keyword in keywords):
@@ -191,6 +179,7 @@ class PersistingVisitWebpageTool(ResearchTool):
         super().__init__(message_queue, queue_lock)
         self.vector_store = vector_store
         self.embedding_config = embedding_config
+        self.visited_urls: dict[str, str] = {}
 
     def _get_webpage_content(self, url: str) -> tuple[str, str]:
         try:
@@ -224,6 +213,9 @@ class PersistingVisitWebpageTool(ResearchTool):
         return str(truncate_content(markdown_content, 10000)), title
 
     def forward(self, url: str) -> str:
+        if url in self.visited_urls:
+            return self.visited_urls[url]
+
         try:
             content, title = self._get_webpage_content(url)
             summary = content[:200] + "..." if len(content) > 200 else content
@@ -246,6 +238,7 @@ class PersistingVisitWebpageTool(ResearchTool):
             ).chunk(content_with_metadata)
             self.vector_store.add_documents(documents, [metadata] * len(documents))
 
+            self.visited_urls[url] = content_with_metadata
             return content_with_metadata
 
         except Exception as e:
@@ -281,7 +274,7 @@ class QueryFindingsTool(Tool):
 
 
 @SmolLLMObs.wrapped_tool
-class GoogleSearchTool(Tool):
+class GoogleSearchTool(ResearchTool):
     name = "web_search"
     description = """Performs a google web search for your query then returns a string of the top search results."""
     inputs = {
@@ -305,27 +298,21 @@ class GoogleSearchTool(Tool):
         message_queue: queue.Queue,
         queue_lock: threading.Lock,
     ):
-        super().__init__(self)
+        super().__init__(message_queue, queue_lock)
         self.serper_api_key = os.getenv("SERPER_API_KEY")
-        self.message_queue = message_queue
-        self.queue_lock = queue_lock
-        self.sent_status = False
 
     def forward(
         self,
         query: str,
         date_lookback: Optional[str] = None,
     ) -> str:
-        if not self.sent_status:
-            with self.queue_lock:
-                self.message_queue.put(
-                    ResearchStatusMessage(
-                        type="status",
-                        status=ResearchStatus.BROWSING,
-                        message="Browsing the web...",
-                    )
+        with self.queue_lock:
+            self.message_queue.put(
+                ResearchStatusMessage(
+                    type="status",
+                    message="Searching the web...",
                 )
-            self.sent_status = True
+            )
 
         if self.serper_api_key is None:
             raise ValueError(

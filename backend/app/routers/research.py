@@ -195,7 +195,7 @@ async def paper_deep_research(request: Request):
         )
     model = request.query_params.get("model") or settings.DEFAULT_MODEL
     agent_model = settings.agent_model(model, 0.2)
-    stream = deep_research.run_agent(url, agent_model, verbosity_level=LogLevel.INFO)
+    stream = deep_research.run_agent(url, agent_model, verbosity_level=LogLevel.OFF)
 
     async def event_generator():
         try:

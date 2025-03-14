@@ -351,8 +351,9 @@ class SectionParser(latexnodes.LatexNodesVisitor):
                 for c in node.nodeargd.argnlist[2].nodelist
                 if isinstance(c, latexwalker.LatexCharsNode)
             )
-        else:
+        elif node.nodeargd.argnlist[2] is not None:
             return str(node.nodeargd.argnlist[2].nodelist[0].chars)
+        return "Unknown Section"
 
     def _parse_subsection(self, node: latexwalker.LatexMacroNode) -> str:
         name_node = node.nodeargd.argnlist[2]
@@ -362,8 +363,9 @@ class SectionParser(latexnodes.LatexNodesVisitor):
                 for c in node.nodeargd.argnlist[2].nodelist
                 if isinstance(c, latexwalker.LatexCharsNode)
             )
-        else:
+        elif node.nodeargd.argnlist[2] is not None:
             return str(node.nodeargd.argnlist[2].nodelist[0].chars)
+        return "Unknown Subsection"
 
     def visit(self, node, **kwargs):
         if not isinstance(node, latexwalker.LatexCharsNode):
