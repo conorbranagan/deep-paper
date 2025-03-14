@@ -92,11 +92,6 @@ export default function DeepResearchView({
   // Add state for tracking expanded sources view
   const [showAllSources, setShowAllSources] = useState<boolean>(false);
 
-  // Get the most recent 3 sources (or all if less than 3)
-  const visibleSources = showAllSources
-    ? sources.reverse()
-    : sources.slice(Math.max(0, sources.length - 3));
-
   return (
     <div
       className={`max-w-5xl mx-auto px-4 py-8 ${!hasSearched ? "flex flex-col justify-center min-h-[70vh]" : ""}`}
@@ -165,84 +160,113 @@ export default function DeepResearchView({
           {sources.length > 0 && (
             <div className="mb-6 border rounded-lg p-4 bg-gray-50">
               <div
-                onClick={() =>
-                  sources.length > 3 && setShowAllSources(!showAllSources)
-                }
-                className={`flex justify-between items-center mb-3 ${sources.length > 3 ? "cursor-pointer hover:bg-gray-100 p-2 rounded-md transition-colors" : ""}`}
+                onClick={() => setShowAllSources(!showAllSources)}
+                className="flex justify-between items-center mb-3 cursor-pointer hover:bg-gray-100 p-2 rounded-md transition-colors"
               >
                 <h3 className="text-lg font-semibold">
                   {`${sources.length}`}{" "}
                   {sources.length === 1 ? "Source" : "Sources"}
                 </h3>
-                {sources.length > 3 && (
-                  <span className="text-sm text-blue-600">
-                    {showAllSources
-                      ? "Show Less"
-                      : `Show All (${sources.length})`}
-                  </span>
-                )}
+                <span className="text-sm text-blue-600">
+                  {showAllSources ? "Collapse" : "Expand"}
+                </span>
               </div>
-              <div
-                className="space-y-3 overflow-hidden transition-all duration-300 ease-in-out"
-                style={{
-                  maxHeight: showAllSources
-                    ? `${sources.length * 90}px`
-                    : "260px",
-                }}
-              >
-                {visibleSources.map((source, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center gap-3 p-2 border rounded bg-white"
-                  >
-                    {source.favicon && (
-                      <Image
-                        src={source.favicon}
-                        alt="Site favicon"
-                        width={20}
-                        height={20}
-                        className="w-5 h-5 object-contain"
-                      />
-                    )}
-                    <div className="flex-1 overflow-hidden">
-                      <p className="font-medium text-sm">{source.title}</p>
+
+              {/* Collapsed view - Icons only */}
+              {!showAllSources && (
+                <div className="flex flex-wrap gap-3 justify-start">
+                  {sources.map((source, index) => (
+                    <a
+                      key={index}
+                      href={source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={source.title}
+                      className="flex items-center p-2 border rounded-lg bg-white hover:bg-gray-100 transition-colors w-[170px]"
+                    >
+                      {source.favicon ? (
+                        <Image
+                          src={source.favicon}
+                          alt={source.title}
+                          width={24}
+                          height={24}
+                          className="w-6 h-6 object-contain"
+                        />
+                      ) : (
+                        <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs">
+                          {source.title.charAt(0)}
+                        </div>
+                      )}
+                      <span className="ml-2 text-sm font-medium truncate max-w-[150px]">
+                        {source.title}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              {/* Expanded view - Full details */}
+              {showAllSources && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {sources.map((source, index) => (
+                    <div key={index} className="p-3 border rounded bg-white">
+                      <div className="flex items-center gap-3 mb-2">
+                        {source.favicon && (
+                          <Image
+                            src={source.favicon}
+                            alt="Site favicon"
+                            width={20}
+                            height={20}
+                            className="w-5 h-5 object-contain"
+                          />
+                        )}
+                        <p className="font-medium text-sm">{source.title}</p>
+                      </div>
                       <a
                         href={source.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline truncate block"
+                        className="text-xs text-blue-600 hover:underline block mb-2"
                       >
                         {source.url}
                       </a>
+                      {source.summary && (
+                        <p className="text-xs text-gray-600">
+                          {source.summary}
+                        </p>
+                      )}
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          {content ? (
-            <div className="prose max-w-none">
-              <div className="response-container">
-                <MarkdownRenderer>{content}</MarkdownRenderer>
+          {/* Main Content Section */}
+          <div>
+            {content ? (
+              <div className="prose max-w-none">
+                <div className="response-container">
+                  <MarkdownRenderer>{content}</MarkdownRenderer>
+                </div>
               </div>
-            </div>
-          ) : isLoading ? (
-            <div className="flex items-center justify-center py-4">
-              <div className="animate-pulse flex space-x-2">
-                <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
-                <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
-                <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
+            ) : isLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-pulse flex space-x-2">
+                  <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
+                  <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
+                  <div className="h-3 w-3 bg-blue-600 rounded-full"></div>
+                </div>
+                <div className="ml-4">
+                  {lastStatus ? lastStatus.message : "Loading..."}
+                </div>
               </div>
-              <div className="ml-4">
-                {lastStatus ? lastStatus.message : "Loading..."}
-              </div>
-            </div>
-          ) : (
-            <p className="text-center text-gray-500">
-              No results found. Try another query.
-            </p>
-          )}
+            ) : (
+              <p className="text-center text-gray-500">
+                No results found. Try another query.
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>
