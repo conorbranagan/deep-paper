@@ -238,12 +238,24 @@ class DeepResearchCommand(Command):
             action="store_true",
             help="Verbose output",
         )
+        parser.add_argument(
+            "-w",
+            "--web-agent",
+            action="store_true",
+            help="Use the web agent",
+        )
         return parser
 
     def execute(self, args):
         LLMObs.enable(ml_app="deep-paper")
         agent_model = settings.agent_model(args.model, 0.2)
-        for chunk in deep_research.run_agent(
+        agent_runner = (
+            deep_research.run_agent_webtool
+            if args.web_agent
+            else deep_research.run_agent_headless
+        )
+
+        for chunk in agent_runner(
             args.url,
             agent_model,
             verbosity_level=LogLevel.OFF if not args.verbose else LogLevel.INFO,
