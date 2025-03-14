@@ -24,6 +24,7 @@ from app.agents.deep_research.tools import (
     PaperRetriever,
     GoogleSearchTool,
     PersistingVisitWebpageTool,
+    QueryFindingsTool,
 )
 
 wrap_llmobs()
@@ -54,6 +55,7 @@ You will analyze the paper at: {arxiv_url}.
    d. Discussion: Analyze the implications of the research, highlight any controversies or debates, and discuss potential future directions.
    e. Conclusion: Summarize the main points and provide closing thoughts.
 
+- Try to use paragraphs rather than bullet points. You can use bullets or numbered lists if you need to, but sparingly.
 - Use in-text citations to credit your sources. For ArXiv papers, use the format (Author et al., Year). For supplementary sources, use (Source Name, Year). Include a "References" section at the end of your report with full citations for all sources used.
 - Write your research report, aiming for a comprehensive yet concise presentation of the topic. The report should be between 1000-1500 words.
 
@@ -86,6 +88,7 @@ def wrap_browser_agent(
 def run_agent(
     url: str, model: LiteLLMModel, verbosity_level=LogLevel.OFF, max_steps=10
 ) -> Generator[ResearchMessage, None, None]:
+    yield ResearchStatusMessage(type="status", message="Starting the agent...")
     collection_name = f"paper_sources_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
     embedding_config = Embedding.default()
     vector_store = QdrantVectorStore.instance(
@@ -108,7 +111,6 @@ def run_agent(
         verbosity_level=verbosity_level,
         description="A team member agent who can analyze Arxiv papers. Provide it with an Arxiv URL and any areas you want it to focus on.",
     )
-
     browser_agent = ToolCallingAgent(
         name="WebBrowser",
         tools=[
@@ -134,18 +136,15 @@ def run_agent(
         In your final response you MUST include URLs alongside any other information about the sources you found.
     """
     browser_agent = wrap_browser_agent(browser_agent, message_queue, queue_lock)
-
     manager_agent = CodeAgent(
         name="Manager",
-        tools=[],
+        tools=[QueryFindingsTool(vector_store, embedding_config)],
         model=model,
         max_steps=max_steps,
         verbosity_level=verbosity_level,
         managed_agents=[paper_agent, browser_agent],
     )
     prompt = DEEP_RESEARCH_PROMPT_TPL.format(arxiv_url=url)
-
-    yield ResearchStatusMessage(type="status", message="Starting the agent...")
 
     # Function to run the agent in a separate thread
     def run_agent():
