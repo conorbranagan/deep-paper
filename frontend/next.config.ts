@@ -5,6 +5,13 @@ const nextConfig: NextConfig = {
   devIndicators: {
     position: "bottom-right",
   },
+  images: {
+    remotePatterns: [
+      {
+        hostname: "www.google.com",
+      },
+    ],
+  },
 };
 
 export default nextConfig;

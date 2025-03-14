@@ -6,8 +6,9 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request, status
 from sse_starlette.sse import EventSourceResponse
+from smolagents.monitoring import LogLevel
 
-from app.agents import researcher, summarizer, explore
+from app.agents import researcher, summarizer, explore, deep_research
 from app.agents.utils import step_as_json, is_agent_step
 from app.models.paper import Paper, InvalidPaperURL, PaperNotFound
 from app.config import settings
@@ -152,11 +153,11 @@ async def explore_query(request: Request):
             detail="Must provide query",
         )
     model = request.query_params.get("model") or settings.DEFAULT_MODEL
-    explore_gen = explore.explore_query(query, model=model)
+    stream = explore.explore_query(query, model=model)
 
     async def event_generator():
         try:
-            for chunk in explore_gen:
+            for chunk in stream:
                 if await request.is_disconnected():
                     break
                 if isinstance(chunk, str):
@@ -176,6 +177,32 @@ async def explore_query(request: Request):
                             }
                         )
                     )
+        except asyncio.CancelledError as e:
+            log.info("Disconnected from client (via refresh/close)")
+            # Do any other cleanup, if any
+            raise e
+
+    return EventSourceResponse(event_generator())
+
+
+@router.get("/paper/deep-research")
+async def paper_deep_research(request: Request):
+    url = request.query_params.get("url")
+    if not url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Must provide url",
+        )
+    model = request.query_params.get("model") or settings.DEFAULT_MODEL
+    agent_model = settings.agent_model(model, 0.2)
+    stream = deep_research.run_agent(url, agent_model, verbosity_level=LogLevel.INFO)
+
+    async def event_generator():
+        try:
+            for chunk in stream:
+                if await request.is_disconnected():
+                    break
+                yield dict(data=chunk.model_dump_json())
         except asyncio.CancelledError as e:
             log.info("Disconnected from client (via refresh/close)")
             # Do any other cleanup, if any
