@@ -212,11 +212,6 @@ class GoogleSearchTool(ResearchTool):
     description = """Performs a google web search for your query then returns a string of the top search results."""
     inputs = {
         "query": {"type": "string", "description": "The search query to perform."},
-        "filter_year_min": {
-            "type": "integer",
-            "description": "Optionally restrict results to a certain year",
-            "nullable": True,
-        },
         "date_lookback": {
             "type": "string",
             # TODO: does serper support date range?
