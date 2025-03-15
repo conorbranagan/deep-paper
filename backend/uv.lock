@@ -400,7 +400,9 @@ dependencies = [
     { name = "fastapi", extra = ["standard"] },
     { name = "google-cloud-aiplatform" },
     { name = "langchain" },
+    { name = "langchain-anthropic" },
     { name = "langchain-community" },
+    { name = "langchain-google-vertexai" },
     { name = "langchain-text-splitters" },
     { name = "litellm" },
     { name = "modal" },
@@ -435,7 +437,9 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.115.11" },
     { name = "google-cloud-aiplatform", specifier = ">=1.83.0" },
     { name = "langchain", specifier = ">=0.3.19" },
+    { name = "langchain-anthropic", specifier = ">=0.3.3" },
     { name = "langchain-community", specifier = ">=0.3.18" },
+    { name = "langchain-google-vertexai", specifier = ">=2.0.15" },
     { name = "langchain-text-splitters", specifier = ">=0.3.6" },
     { name = "litellm", specifier = ">=1.61.20" },
     { name = "modal", specifier = ">=0.73.92" },
@@ -1274,6 +1278,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4f/6b/7c3f5fa60639b885d8dbc932c37f0b0584ac5151ac6bdcd00b67b591e5e9/langchain_core-0.3.40.tar.gz", hash = "sha256:893a238b38491967c804662c1ec7c3e6ebaf223d1125331249c3cf3862ff2746", size = 528341 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/01/b52e43f63261b5aae016cbe170bb5d8e8899770530075d11c1e45a07b97b/langchain_core-0.3.40-py3-none-any.whl", hash = "sha256:9f31358741f10a13db8531e8288b8a5ae91904018c5c2e6f739d6645a98fca03", size = 414346 },
+]
+
+[[package]]
+name = "langchain-google-vertexai"
+version = "2.0.15"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-cloud-aiplatform" },
+    { name = "google-cloud-storage" },
+    { name = "httpx" },
+    { name = "httpx-sse" },
+    { name = "langchain-core" },
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/19/88/ed19609dc111bc6e97244119b3c0947cf6346cc846e2279d6cbfd6aef321/langchain_google_vertexai-2.0.15.tar.gz", hash = "sha256:92ccdb02bab323be6f11a3dfd68de07b0a3160e0019f114d954ce648fab84e98", size = 79846 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b8/28/1c719815be7a5314b3dcddb98c8780377e910add650ef39d10204c5a06fd/langchain_google_vertexai-2.0.15-py3-none-any.whl", hash = "sha256:994d6ab6430ce4d13541f4ca363c1f26b5ec53ad7fef29a0e72f98d3335eb64f", size = 95355 },
 ]
 
 [[package]]

@@ -11,6 +11,7 @@ from app.models.paper import Paper, PaperNotFound
 from app.pipeline.vector_store import VectorStore, QdrantVectorStore
 from app.pipeline.embedding import Embedding
 from app.agents.dd_llmobs import SmolLLMObs, wrap_llmobs
+from app.config import settings
 
 wrap_llmobs()
 
@@ -142,14 +143,16 @@ Please use your available to tools to answer the following prompt.
 """
 
 
-def run_paper_agent(url, prompt, model, stream=False, verbosity_level=LogLevel.OFF):
+def run_paper_agent(
+    url: str, prompt: str, model: str, stream=False, verbosity_level=LogLevel.OFF
+):
     paper = Paper.from_url(url)
     agent = CodeAgent(
         tools=[
             PaperRetriever(),
             CitationRetriever(),
         ],
-        model=model,
+        model=settings.smolagents_model(model, 0.2),
         max_steps=3,
         verbosity_level=verbosity_level,
     )
@@ -171,7 +174,9 @@ Please use your available to tools to answer the following prompt.
 """
 
 
-def run_research_agent(prompt, model, stream=False, verbosity_level=LogLevel.OFF):
+def run_research_agent(
+    prompt: str, model: str, stream=False, verbosity_level=LogLevel.OFF
+):
     vector_store = QdrantVectorStore.instance(
         collection_name=QdrantVectorStore.PAPERS_COLLECTION,
         embedding_config=Embedding.default(),
@@ -181,7 +186,7 @@ def run_research_agent(prompt, model, stream=False, verbosity_level=LogLevel.OFF
             PaperChunkRetriever(vector_store),
             CitationRetriever(),
         ],
-        model=model,
+        model=settings.smolagents_model(model, 0.2),
         max_steps=3,
         verbosity_level=verbosity_level,
     )

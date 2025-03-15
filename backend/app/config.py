@@ -1,11 +1,16 @@
 import logging
 import os
+import json
+
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from smolagents import LiteLLMModel
 from ddtrace.llmobs import LLMObs
 from ddtrace import patch_all
-
+from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
+from langchain_google_vertexai import ChatVertexAI
+from google.oauth2 import service_account
 
 load_dotenv()
 
@@ -31,7 +36,7 @@ class Settings(BaseModel):
     QDRANT_API_KEY: str = os.getenv("QDRANT_API_KEY", "")
     VERTEX_CREDENTIALS_JSON: str = os.getenv("VERTEX_CREDENTIALS_JSON", "")
 
-    def agent_model(self, model_name, temperature, **kwargs):
+    def smolagents_model(self, model_name, temperature):
         if model_name.startswith("openai/"):
             return LiteLLMModel(
                 model_name,
@@ -49,6 +54,30 @@ class Settings(BaseModel):
                 model_name,
                 temperature=temperature,
                 vertex_credentials=self.VERTEX_CREDENTIALS_JSON,
+            )
+        else:
+            raise Exception(f"unhandled model name: {model_name}")
+
+    def langchain_model(self, model_name):
+        if model_name.startswith("openai/"):
+            return ChatOpenAI(model=model_name[len("openai/") :])
+        elif model_name.startswith("anthropic/"):
+            model_name = model_name[len("anthropic/") :]
+            # FIXME: Something weird with typing here requires settings all these values.,
+            # we're on an older version of this library due to browser-use, might be fixed in a newer one.
+            return ChatAnthropic(
+                model_name=model_name,
+                timeout=None,
+                stop=None,
+                max_retries=2,
+            )
+        elif model_name.startswith("vertex_ai/"):
+            # Create google credentials from JSON in VERTEX_CREDENTIALS_JSON
+            return ChatVertexAI(
+                model=model_name[len("vertex_ai/") :],
+                credentials=service_account.Credentials.from_service_account_info(
+                    json.loads(self.VERTEX_CREDENTIALS_JSON)
+                ),
             )
         else:
             raise Exception(f"unhandled model name: {model_name}")

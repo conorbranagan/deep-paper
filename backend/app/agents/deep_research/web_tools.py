@@ -3,7 +3,6 @@ import queue
 import threading
 import logging
 
-from langchain_openai import ChatOpenAI
 from browser_use import Agent, BrowserConfig, Browser
 from browser_use.browser.views import BrowserState
 from browser_use.agent.views import AgentOutput
@@ -11,6 +10,7 @@ from browser_use.agent.views import AgentOutput
 from app.agents.deep_research.tools import ResearchTool
 from app.agents.dd_llmobs import SmolLLMObs
 from app.agents.deep_research.message import ResearchSourceMessage
+from app.config import settings
 
 log = logging.getLogger(__name__)
 
@@ -40,15 +40,17 @@ class BrowserUseWebAgent(ResearchTool):
         self,
         message_queue: queue.Queue,
         queue_lock: threading.Lock,
+        model: str,
         browser_config: BrowserConfig,
     ):
         super().__init__(message_queue, queue_lock)
+        self.model = model
         self.browser_config = browser_config
         self.visited_urls: dict[str, str] = {}
 
     def forward(self, task: str) -> str:
         browser = Browser(config=self.browser_config)
-        llm = ChatOpenAI(model="gpt-4o-mini")
+        llm = settings.langchain_model(self.model)
 
         async def new_step_callback(
             browser_state: BrowserState, agent_output: AgentOutput, step_index: int
