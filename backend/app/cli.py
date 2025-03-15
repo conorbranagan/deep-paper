@@ -240,22 +240,24 @@ class DeepResearchCommand(Command):
         )
         parser.add_argument(
             "-w",
-            "--web-agent",
-            action="store_true",
-            help="Use the web agent",
+            "--mode",
+            choices=[m.value for m in deep_research.AgentMode],
+            default=deep_research.AgentMode.TEXT_BROWSER.value,
+            help="Mode to use for research",
         )
         return parser
 
     def execute(self, args):
         LLMObs.enable(ml_app="deep-paper")
         agent_model = settings.agent_model(args.model, 0.2)
-        agent_runner = (
-            deep_research.run_agent_webtool
-            if args.web_agent
-            else deep_research.run_agent_headless
-        )
-
-        for chunk in agent_runner(
+        try:
+            agent_mode = deep_research.AgentMode(args.mode)
+        except ValueError:
+            raise ValueError(
+                f"Invalid mode, choose from: {', '.join(m.value for m in deep_research.AgentMode)}"
+            )
+        for chunk in deep_research.run_agent(
+            agent_mode,
             args.url,
             agent_model,
             verbosity_level=LogLevel.OFF if not args.verbose else LogLevel.INFO,

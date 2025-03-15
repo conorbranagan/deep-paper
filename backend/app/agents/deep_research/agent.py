@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 import threading
 import queue
 import logging
@@ -10,6 +11,7 @@ from smolagents import (
     ToolCallingAgent,
 )
 from smolagents.monitoring import LogLevel
+from browser_use import BrowserConfig
 
 from app.pipeline.vector_store import QdrantVectorStore
 from app.pipeline.embedding import Embedding
@@ -25,7 +27,7 @@ from app.agents.deep_research.tools import (
     GoogleSearchTool,
     VisitWebpageTool,
 )
-from app.agents.deep_research.web_tools import WebAgentTool
+from app.agents.deep_research.web_tools import BrowserUseWebAgent
 
 wrap_llmobs()
 
@@ -85,56 +87,21 @@ def wrap_browser_agent(
     return cls
 
 
-def run_agent_webtool(
-    url: str, model: LiteLLMModel, verbosity_level=LogLevel.OFF, max_steps=10
-):
-    collection_name = f"paper_sources_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
-    embedding_config = Embedding.default()
-    vector_store = QdrantVectorStore.instance(
-        collection_name=collection_name,
-        embedding_config=embedding_config,
-    )
-
-    message_queue: queue.Queue[ResearchMessage] = queue.Queue()
-    queue_lock = threading.Lock()
-
-    browser_agent = ToolCallingAgent(
-        name="WebBrowser",
-        tools=[
-            WebAgentTool(message_queue, queue_lock),
-        ],
-        model=model,
-        max_steps=7,
-        verbosity_level=verbosity_level,
-        description="""A team member that will search the internet to answer your question.
-            Ask them for all your questions that require browsing the web. Ensure they visit the most important pages they find before including them in the response.
-            Provide them as much context as possible, in particular if you need to search on a specific timeframe!
-            And don't hesitate to provide them with a complex search task, like finding a difference between two webpages.
-            Your request must be a real sentence, not a google search! Like "Find me this information (...)" rather than a few keywords.""",
-    )
-    browser_agent.prompt_templates["managed_agent"][
-        "task"
-    ] += """
-        In order to provide a comprehensive answer, you must visit the most important pages you find.
-        In your final response you MUST include URLs alongside any other information about the sources you found.
-    """
-
-    return _run_agent(
-        url,
-        model,
-        browser_agent,
-        message_queue,
-        queue_lock,
-        vector_store,
-        embedding_config,
-        verbosity_level,
-        max_steps,
-    )
+class AgentMode(Enum):
+    BROWSER_USE = "browser_use"
+    BROWSER_USE_HEADLESS = "browser_use_headless"
+    TEXT_BROWSER = "text_browser"
 
 
-def run_agent_headless(
-    url: str, model: LiteLLMModel, verbosity_level=LogLevel.OFF, max_steps=10
-):
+def run_agent(
+    mode: AgentMode,
+    paper_url: str,
+    model: LiteLLMModel,
+    verbosity_level=LogLevel.OFF,
+    max_steps=10,
+) -> Generator[ResearchMessage, None, None]:
+    yield ResearchStatusMessage(type="status", message="Starting the agent...")
+    log.info(f"Running the deep research agent, url={paper_url}, mode={mode}")
     collection_name = f"paper_sources_{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}"
     embedding_config = Embedding.default()
     vector_store = QdrantVectorStore.instance(
@@ -147,12 +114,27 @@ def run_agent_headless(
     # Create a flag to signal when the agent is done
     # Create a lock for thread safety
     queue_lock = threading.Lock()
-    browser_agent = ToolCallingAgent(
-        name="WebBrowser",
-        tools=[
+
+    browser_agent_tools = []
+    if mode == AgentMode.BROWSER_USE:
+        browser_agent_tools = [
+            BrowserUseWebAgent(
+                message_queue, queue_lock, BrowserConfig(headless=False)
+            ),
+        ]
+    elif mode == AgentMode.BROWSER_USE_HEADLESS:
+        browser_agent_tools = [
+            BrowserUseWebAgent(message_queue, queue_lock, BrowserConfig(headless=True)),
+        ]
+    elif mode == AgentMode.TEXT_BROWSER:
+        browser_agent_tools = [
             GoogleSearchTool(message_queue, queue_lock),
             VisitWebpageTool(vector_store, embedding_config, message_queue, queue_lock),
-        ],
+        ]
+
+    browser_agent = ToolCallingAgent(
+        name="WebBrowser",
+        tools=browser_agent_tools,
         model=model,
         max_steps=7,
         verbosity_level=verbosity_level,
@@ -169,32 +151,6 @@ def run_agent_headless(
         In your final response you MUST include URLs alongside any other information about the sources you found.
     """
     browser_agent = wrap_browser_agent(browser_agent, message_queue, queue_lock)
-
-    return _run_agent(
-        url,
-        model,
-        browser_agent,
-        message_queue,
-        queue_lock,
-        vector_store,
-        embedding_config,
-        verbosity_level,
-        max_steps,
-    )
-
-
-def _run_agent(
-    url: str,
-    model: LiteLLMModel,
-    browser_agent: ToolCallingAgent,
-    message_queue: queue.Queue,
-    queue_lock: threading.Lock,
-    vector_store: QdrantVectorStore,
-    embedding_config: Embedding,
-    verbosity_level=LogLevel.OFF,
-    max_steps=10,
-) -> Generator[ResearchMessage, None, None]:
-    yield ResearchStatusMessage(type="status", message="Starting the agent...")
 
     agent_done = threading.Event()
     paper_agent = ToolCallingAgent(
@@ -214,7 +170,7 @@ def _run_agent(
         verbosity_level=verbosity_level,
         managed_agents=[paper_agent, browser_agent],
     )
-    prompt = DEEP_RESEARCH_PROMPT_TPL.format(arxiv_url=url)
+    prompt = DEEP_RESEARCH_PROMPT_TPL.format(arxiv_url=paper_url)
 
     # Function to run the agent in a separate thread
     def run_agent_thread():

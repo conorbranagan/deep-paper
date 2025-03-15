@@ -194,14 +194,18 @@ async def paper_deep_research(request: Request):
             detail="Must provide url",
         )
     model = request.query_params.get("model") or settings.DEFAULT_MODEL
-    web_agent = request.query_params.get("web_agent") == "true"
+    mode = request.query_params.get("mode")
     agent_model = settings.agent_model(model, 0.2)
-    agent_runner = (
-        deep_research.run_agent_webtool
-        if web_agent
-        else deep_research.run_agent_headless
+    try:
+        agent_mode = deep_research.AgentMode(mode)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid mode, choose from: {', '.join(m.value for m in deep_research.AgentMode)}",
+        )
+    stream = deep_research.run_agent(
+        agent_mode, url, agent_model, verbosity_level=LogLevel.OFF
     )
-    stream = agent_runner(url, agent_model, verbosity_level=LogLevel.OFF)
 
     async def event_generator():
         try:
