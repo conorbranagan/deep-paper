@@ -4,6 +4,7 @@ import threading
 import os
 import re
 import json
+import logging
 
 from smolagents import Tool
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -19,6 +20,8 @@ from app.agents.deep_research.message import (
     ResearchStatusMessage,
     ResearchSourceMessage,
 )
+
+log = logging.getLogger(__name__)
 
 
 class ResearchTool(Tool):
@@ -68,6 +71,7 @@ class PaperRetriever(ResearchTool):
                     )
                 )
 
+        log.info(f"Analyzing paper {arxiv_id} with query {query}")
         if query is None or not query.strip():
             return f"\nPaper Contents\n\n{paper.contents()}"
 
@@ -146,6 +150,7 @@ class VisitWebpageTool(ResearchTool):
         return str(truncate_content(markdown_content, 10000)), title
 
     def forward(self, url: str) -> str:
+        log.info(f"Visiting webpage {url}")
         if url in self.visited_urls:
             return self.visited_urls[url]
 
@@ -197,6 +202,7 @@ class QueryFindingsTool(Tool):
         self.embedding_config = embedding_config
 
     def forward(self, query: str) -> str:
+        log.info(f"Querying findings for {query}")
         results = self.vector_store.search(query, top_k=10)
         return "\nRetrieved documents from sources:\n" + "".join(
             [
@@ -234,6 +240,7 @@ class GoogleSearchTool(ResearchTool):
         query: str,
         date_lookback: Optional[str] = None,
     ) -> str:
+        log.info(f"Searching the web for {query} with date lookback {date_lookback}")
         with self.queue_lock:
             self.message_queue.put(
                 ResearchStatusMessage(
