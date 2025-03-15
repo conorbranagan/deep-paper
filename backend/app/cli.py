@@ -189,18 +189,17 @@ class ResearchCommand(Command):
 
     def execute(self, args):
         LLMObs.enable(ml_app="deep-paper")
-        agent_model = settings.agent_model(args.model, 0.2)
         if args.url:
             run_paper_agent(
                 args.url,
                 args.prompt,
-                agent_model,
+                args.model,
                 stream=False,
                 verbosity_level=LogLevel.INFO,
             )
         else:
             run_research_agent(
-                args.prompt, agent_model, stream=False, verbosity_level=LogLevel.INFO
+                args.prompt, args.model, stream=False, verbosity_level=LogLevel.INFO
             )
 
 
@@ -249,7 +248,6 @@ class DeepResearchCommand(Command):
 
     def execute(self, args):
         LLMObs.enable(ml_app="deep-paper")
-        agent_model = settings.agent_model(args.model, 0.2)
         try:
             agent_mode = deep_research.AgentMode(args.mode)
         except ValueError:
@@ -259,7 +257,7 @@ class DeepResearchCommand(Command):
         for chunk in deep_research.run_agent(
             agent_mode,
             args.url,
-            agent_model,
+            args.model,
             verbosity_level=LogLevel.OFF if not args.verbose else LogLevel.INFO,
             max_steps=args.steps,
         ):

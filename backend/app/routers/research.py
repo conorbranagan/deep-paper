@@ -76,13 +76,7 @@ async def stream(request: Request):
             detail="Must provide paper_url and query",
         )
 
-    agent_model = settings.agent_model(
-        model,
-        0.2,
-    )
-    researcher_gen = researcher.run_paper_agent(
-        paper_url, query, agent_model, stream=True
-    )
+    researcher_gen = researcher.run_paper_agent(paper_url, query, model, stream=True)
 
     return await create_event_source_response(request, researcher_gen)
 
@@ -195,7 +189,6 @@ async def paper_deep_research(request: Request):
         )
     model = request.query_params.get("model") or settings.DEFAULT_MODEL
     mode = request.query_params.get("mode")
-    agent_model = settings.agent_model(model, 0.2)
     try:
         agent_mode = deep_research.AgentMode(mode)
     except ValueError:
@@ -204,7 +197,7 @@ async def paper_deep_research(request: Request):
             detail=f"Invalid mode, choose from: {', '.join(m.value for m in deep_research.AgentMode)}",
         )
     stream = deep_research.run_agent(
-        agent_mode, url, agent_model, verbosity_level=LogLevel.OFF
+        agent_mode, url, model, verbosity_level=LogLevel.OFF
     )
 
     async def event_generator():

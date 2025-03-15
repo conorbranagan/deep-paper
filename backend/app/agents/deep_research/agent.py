@@ -6,7 +6,6 @@ import logging
 from typing import Generator
 
 from smolagents import (
-    LiteLLMModel,
     CodeAgent,
     ToolCallingAgent,
 )
@@ -28,6 +27,7 @@ from app.agents.deep_research.tools import (
     VisitWebpageTool,
 )
 from app.agents.deep_research.web_tools import BrowserUseWebAgent
+from app.config import settings
 
 wrap_llmobs()
 
@@ -96,7 +96,7 @@ class AgentMode(Enum):
 def run_agent(
     mode: AgentMode,
     paper_url: str,
-    model: LiteLLMModel,
+    model: str,
     verbosity_level=LogLevel.OFF,
     max_steps=10,
 ) -> Generator[ResearchMessage, None, None]:
@@ -109,6 +109,8 @@ def run_agent(
         embedding_config=embedding_config,
     )
 
+    smolagents_model = settings.smolagents_model(model, 0)
+
     # Create a thread-safe queue for messages
     message_queue: queue.Queue[ResearchMessage] = queue.Queue()
     # Create a flag to signal when the agent is done
@@ -119,12 +121,14 @@ def run_agent(
     if mode == AgentMode.BROWSER_USE:
         browser_agent_tools = [
             BrowserUseWebAgent(
-                message_queue, queue_lock, BrowserConfig(headless=False)
+                message_queue, queue_lock, model, BrowserConfig(headless=False)
             ),
         ]
     elif mode == AgentMode.BROWSER_USE_HEADLESS:
         browser_agent_tools = [
-            BrowserUseWebAgent(message_queue, queue_lock, BrowserConfig(headless=True)),
+            BrowserUseWebAgent(
+                message_queue, queue_lock, model, BrowserConfig(headless=True)
+            ),
         ]
     elif mode == AgentMode.TEXT_BROWSER:
         browser_agent_tools = [
@@ -135,7 +139,7 @@ def run_agent(
     browser_agent = ToolCallingAgent(
         name="WebBrowser",
         tools=browser_agent_tools,
-        model=model,
+        model=smolagents_model,
         max_steps=7,
         verbosity_level=verbosity_level,
         description="""A team member that will search the internet to answer your question.
@@ -156,7 +160,7 @@ def run_agent(
     paper_agent = ToolCallingAgent(
         name="PaperAnalyzer",
         tools=[PaperRetriever(message_queue, queue_lock)],
-        model=model,
+        model=smolagents_model,
         max_steps=2,
         verbosity_level=verbosity_level,
         description="A team member agent who can analyze Arxiv papers. Provide it with an Arxiv URL and any areas you want it to focus on.",
@@ -165,7 +169,7 @@ def run_agent(
     manager_agent = CodeAgent(
         name="Manager",
         tools=[],
-        model=model,
+        model=smolagents_model,
         max_steps=max_steps,
         verbosity_level=verbosity_level,
         managed_agents=[paper_agent, browser_agent],
