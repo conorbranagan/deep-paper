@@ -1,16 +1,26 @@
-from langchain_openai import ChatOpenAI
-from browser_use import Agent, BrowserConfig, Browser
 import asyncio
-import os
 import queue
 import threading
+import logging
 
+from langchain_openai import ChatOpenAI
+from browser_use import Agent, BrowserConfig, Browser
+from browser_use.browser.views import BrowserState
+from browser_use.agent.views import AgentOutput
 
 from app.agents.deep_research.tools import ResearchTool
 from app.agents.dd_llmobs import SmolLLMObs
+from app.agents.deep_research.message import ResearchSourceMessage
 
-# Don't send telemetry to browser-use for now.
-os.environ["ANONYMIZED_TELEMETRY"] = "false"
+log = logging.getLogger(__name__)
+
+
+def _is_valid_source(url: str) -> bool:
+    if url == "about:blank":
+        return False
+    if "google.com" in url:
+        return False
+    return True
 
 
 @SmolLLMObs.wrapped_tool
@@ -34,15 +44,38 @@ class BrowserUseWebAgent(ResearchTool):
     ):
         super().__init__(message_queue, queue_lock)
         self.browser_config = browser_config
+        self.visited_urls: dict[str, str] = {}
 
     def forward(self, task: str) -> str:
         browser = Browser(config=self.browser_config)
         llm = ChatOpenAI(model="gpt-4o-mini")
+
+        async def new_step_callback(
+            browser_state: BrowserState, agent_output: AgentOutput, step_index: int
+        ):
+            if not _is_valid_source(browser_state.url):
+                return
+
+            if browser_state.url not in self.visited_urls:
+                log.info(f"Visited source: {browser_state.url}")
+                with self.queue_lock:
+                    self.message_queue.put(
+                        ResearchSourceMessage(
+                            type="source",
+                            url=browser_state.url,
+                            title=browser_state.title,
+                            favicon=f"http://www.google.com/s2/favicons?domain={browser_state.url}",
+                            summary="",
+                        )
+                    )
+                    self.visited_urls[browser_state.url] = browser_state.title
+
         agent = Agent(
             task=task,
             llm=llm,
             sensitive_data=None,
             browser=browser,
+            register_new_step_callback=new_step_callback,
         )
         # Run the async function in a synchronous context
         return str(asyncio.run(agent.run()))

@@ -33,7 +33,7 @@ wrap_llmobs()
 
 log = logging.getLogger(__name__)
 
-
+# FIXME: Removed Medium sources for now as there's something wonky in how URLs are getting generated. Issue w/ training data?
 DEEP_RESEARCH_PROMPT_TPL = """
 You are a research assistant tasked with analyzing an Arxiv paper and creating a comprehensive research report.
 Your goal is to research the paper's topic, find external sources that reference it, and collect them for later use.
@@ -46,7 +46,7 @@ You will analyze the paper at: {arxiv_url}.
 
 2. Explore external sources which reference this paper:
    a. Search for blog posts, articles, and academic discussions that cite the Arxiv paper URL. Make sure you fetch the pages you find most interesting.
-   b. Focus on sources from Substack, Medium, and academic blogs.
+   b. Focus on sources from Substack and academic blogs.
    c. Collect at least 5 relevant external sources that provide substantial analysis or discussion of the paper.
    d. Try to find both sources that are around the time of the paper and those that are newer where they put it in context.
 
