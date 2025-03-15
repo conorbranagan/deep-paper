@@ -1,3 +1,8 @@
+import json
+from typing import Any
+import logging
+from contextlib import contextmanager
+
 from smolagents.agent_types import AgentText, AgentImage, AgentAudio
 from smolagents import (
     CodeAgent,
@@ -7,55 +12,87 @@ from smolagents import (
     GoogleSearchTool,
     DuckDuckGoSearchTool,
     ChatMessage,
+    LiteLLMModel,
 )
-
 from opentelemetry import trace
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry import context as context_api
 from opentelemetry.semconv_ai import SpanAttributes, TraceloopSpanKindValues
 
-from app.config import OtelClient
+log = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
+
+
+def _set_attribute(span: trace.Span, key: str, attribute: Any):
+    if isinstance(attribute, ChatMessage):
+        # the `raw` data can't be serialized so let's remove it.
+        attribute.raw = None
+        span.set_attribute(key, json.dumps(attribute.dict()))
+    elif isinstance(attribute, (dict, list)):
+        span.set_attribute(key, json.dumps(attribute))
+    elif isinstance(attribute, (int, float, bool)):
+        span.set_attribute(key, attribute)
+    else:
+        span.set_attribute(key, str(attribute))
+
+
+def _start_span(name: str, kind: TraceloopSpanKindValues):
+    """Create and set up a span as a context manager"""
+
+    @contextmanager
+    def span_context():
+        span = tracer.start_span(f"{name}.{kind.value}")
+        ctx = trace.set_span_in_context(span)
+        ctx_token = context_api.attach(ctx)
+        span.set_attribute(SpanAttributes.TRACELOOP_SPAN_KIND, kind.value)
+        span.set_attribute(SpanAttributes.TRACELOOP_ENTITY_NAME, name)
+        try:
+            yield span
+        finally:
+            span.end()
+            context_api.detach(ctx_token)
+
+    return span_context()
+
+
+def _attach_parent_span(model, span: trace.Span):
+    if isinstance(model, LiteLLMModel):
+        kwargs = model.kwargs
+        if "metadata" in kwargs:
+            kwargs["metadata"]["parent_otel_span"] = span
+        else:
+            kwargs["metadata"] = {"parent_otel_span": span}
+
+        # Replace the method
+        model.kwargs = kwargs
+    else:
+        log.warning("unsupported model type for SmolTel: %s", type(model))
+
+
+def _detach_parent_span(model):
+    if isinstance(model, LiteLLMModel):
+        model.kwargs = model.kwargs.pop("metadata", None)
+    else:
+        log.warning("unsupported model type for SmolTel: %s", type(model))
 
 
 class SmolTel:
     """A utility class for providing Datadog LLM Obs wrapping for Tools and Agents from the smolagents library"""
 
     @staticmethod
-    def _serialize_output_data(output_data):
-        if isinstance(output_data, ChatMessage):
-            # the `raw` data can't be serialized so let's remove it.
-            output_data.raw = None
-            return output_data.dict()
-        return output_data
-
-    @staticmethod
-    def _setup_span(name: str, kind: TraceloopSpanKindValues):
-        """Create and set up a span"""
-        tracer = OtelClient.get_tracer()
-        span = tracer.start_span(f"{name}.{kind.value}")
-        span.set_attribute(SpanAttributes.TRACELOOP_SPAN_KIND, kind.value)
-        ctx = trace.set_span_in_context(span)
-        ctx_token = context_api.attach(ctx)
-        return span, ctx, ctx_token
-
     def wrap_tool(cls):
         original_forward = cls.forward
 
         def wrapped_forward(self, *args, **kwargs):
-            span, ctx, ctx_token = SmolTel._setup_span(
-                self.name, TraceloopSpanKindValues.TOOL
-            )
-            for k, v in kwargs.items():
-                span.set_attribute(f"tool_input.{k}", v)
-            try:
-                result = original_forward(self, *args, **kwargs)
-            except Exception as e:
-                span.set_status(Status(StatusCode.ERROR, str(e)))
-                span.record_exception(e)
-                raise e
-            finally:
-                context_api.detach(ctx_token)
-                span.end()
+            with _start_span(self.name, TraceloopSpanKindValues.TOOL) as span:
+                for k, v in kwargs.items():
+                    _set_attribute(span, f"tool_input.{k}", v)
+                try:
+                    result = original_forward(self, *args, **kwargs)
+                except Exception as e:
+                    span.set_status(Status(StatusCode.ERROR, str(e)))
+                    span.record_exception(e)
+                    raise e
 
             return result
 
@@ -70,46 +107,56 @@ class SmolTel:
         original_run = cls.run
 
         def wrapped_step(self, memory_step):
-            span, ctx, ctx_token = SmolTel._setup_span(
-                "action", TraceloopSpanKindValues.TASK
-            )
-
-            res = original_step(self, memory_step)
-            step_meta = memory_step.dict()
-            span.set_attribute("input_data", step_meta.pop("model_input_messages"))
-            span.set_attribute(
-                "output_data",
-                SmolTel._serialize_output_data(step_meta.pop("model_output_message")),
-            )
-            for k, v in step_meta.items():
-                span.set_attribute(f"metadata.{k}", v)
-            context_api.detach(ctx_token)
-            span.end()
-            return res
+            with _start_span("action", TraceloopSpanKindValues.TASK) as span:
+                step_meta = memory_step.dict()
+                _set_attribute(
+                    span,
+                    "input_data",
+                    step_meta.pop("model_input_messages"),
+                )
+                _set_attribute(
+                    span,
+                    "output_data",
+                    step_meta.pop("model_output_message"),
+                )
+                for k, v in step_meta.items():
+                    _set_attribute(span, f"metadata.{k}", v)
+                _attach_parent_span(self.model, span)
+                try:
+                    res = original_step(self, memory_step)
+                finally:
+                    _detach_parent_span(self.model)
+                return res
 
         def wrapped_planning_step(self, *args, **kwargs):
-            span, ctx, ctx_token = SmolTel._setup_span(
-                "planning", TraceloopSpanKindValues.TASK
-            )
-            return original_planning_step(self, *args, **kwargs)
+            with _start_span("planning", TraceloopSpanKindValues.TASK) as span:
+                _attach_parent_span(self.model, span)
+                try:
+                    return original_planning_step(self, *args, **kwargs)
+                finally:
+                    _detach_parent_span(self.model)
 
         def wrapped_final_answer(self, *args, **kwargs):
-            span, ctx, ctx_token = SmolTel._setup_span(
-                "final_answer", TraceloopSpanKindValues.TASK
-            )
-            answer = original_final_answer(self, *args, **kwargs)
-            span.set_attribute("input_data", args[0] if len(args) > 0 else "")
-            span.set_attribute("output_data", answer)
-            context_api.detach(ctx_token)
-            span.end()
-            return answer
+            with _start_span("final_answer", TraceloopSpanKindValues.TASK) as span:
+                _attach_parent_span(self.model, span)
+                try:
+                    _set_attribute(
+                        span,
+                        "input_data",
+                        args[0] if len(args) > 0 else "",
+                    )
+                    answer = original_final_answer(self, *args, **kwargs)
+                    _set_attribute(span, "output_data", answer)
+                    return answer
+                finally:
+                    _detach_parent_span(self.model)
 
         def wrapped_run(self, *args, **kwargs):
             llmbos_metadata = {
                 "task": args[0] or kwargs.get("task") or "unset task",
-                "max_steps": kwargs.get("max_steps"),
-                "stream": kwargs.get("stream"),
-                "reset": kwargs.get("reset"),
+                "max_steps": kwargs.get("max_steps") or 0,
+                "stream": kwargs.get("stream") or False,
+                "reset": kwargs.get("reset") or False,
                 # other options: images, additional_args
             }
             is_stream = kwargs.get("stream", False)
@@ -123,16 +170,12 @@ class SmolTel:
                 if hasattr(self, "name"):
                     agent_name = f"{self.name} (smolagents)"
 
-                span, ctx, ctx_token = SmolTel._setup_span(
-                    agent_name, TraceloopSpanKindValues.AGENT
-                )
-                output = original_run(self, *args, **kwargs)
-                span.set_attribute("input_data", llmbos_metadata["task"])
-                span.set_attribute("output_data", output)
-                for k, v in llmbos_metadata.items():
-                    span.set_attribute(f"metadata.{k}", v)
-                context_api.detach(ctx_token)
-                span.end()
+                with _start_span(agent_name, TraceloopSpanKindValues.AGENT) as span:
+                    output = original_run(self, *args, **kwargs)
+                    _set_attribute(span, "input_data", llmbos_metadata["task"])
+                    _set_attribute(span, "output_data", output)
+                    for k, v in llmbos_metadata.items():
+                        _set_attribute(span, f"metadata.{k}", v)
                 return output
 
         def _wrapped_run_stream(self, *args, llmbos_metadata, **kwargs):
@@ -141,28 +184,23 @@ class SmolTel:
             agent_name = "smolagents_agent"
             if hasattr(self, "name"):
                 agent_name = f"{self.name} (smolagents)"
-            span, ctx, ctx_token = SmolTel._setup_span(
-                agent_name, TraceloopSpanKindValues.AGENT
-            )
-            r_gen = original_run(self, *args, **kwargs)
-            output = "unknown"
-            last_val = None
-            for val in r_gen:
-                last_val = val
-                yield val
+            with _start_span(agent_name, TraceloopSpanKindValues.AGENT) as span:
+                r_gen = original_run(self, *args, **kwargs)
+                output = "unknown"
+                last_val = None
+                for val in r_gen:
+                    last_val = val
+                    yield val
 
-                # Handle specific types for now.
-                if last_val and isinstance(
-                    last_val, (AgentText, AgentImage, AgentAudio)
-                ):
-                    output = last_val.to_string()
-                    span.set_attribute("input_data", llmbos_metadata["task"])
-                    span.set_attribute("output_data", output)
-                    for k, v in llmbos_metadata.items():
-                        span.set_attribute(f"metadata.{k}", v)
-
-            context_api.detach(ctx_token)
-            span.end()
+                    # Handle specific types for now.
+                    if last_val and isinstance(
+                        last_val, (AgentText, AgentImage, AgentAudio)
+                    ):
+                        output = last_val.to_string()
+                        span.set_attribute("input_data", llmbos_metadata["task"])
+                        span.set_attribute("output_data", output)
+                        for k, v in llmbos_metadata.items():
+                            span.set_attribute(f"metadata.{k}", v)
 
         cls.step = wrapped_step
         cls.planning_step = wrapped_planning_step

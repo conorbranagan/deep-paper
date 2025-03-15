@@ -185,6 +185,7 @@ def run_research_agent(
         embedding_config=Embedding.default(),
     )
     agent = CodeAgent(
+        name="researcher",
         tools=[
             # PaperChunkRetriever(vector_store),
             # CitationRetriever(),

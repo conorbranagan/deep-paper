@@ -149,6 +149,15 @@ wheels = [
 ]
 
 [[package]]
+name = "asgiref"
+version = "3.8.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/29/38/b3395cc9ad1b56d2ddac9970bc8f4141312dbaec28bc7c218b0dfafd0f42/asgiref-3.8.1.tar.gz", hash = "sha256:c343bd80a0bec947a9860adb4c432ffa7db769836c64238fc34bdc3fec84d590", size = 35186 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/39/e3/893e8757be2612e6c266d9bb58ad2e3651524b5b40cf56761e985a28b13e/asgiref-3.8.1-py3-none-any.whl", hash = "sha256:3e1e3ecc849832fe52ccf2cb6686b7a55f82bb1d6aee72a58826471390335e47", size = 23828 },
+]
+
+[[package]]
 name = "attrs"
 version = "25.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -507,6 +516,7 @@ dependencies = [
     { name = "openai" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-exporter-otlp" },
+    { name = "opentelemetry-instrumentation-fastapi" },
     { name = "opentelemetry-sdk" },
     { name = "pydantic" },
     { name = "pylatexenc" },
@@ -550,6 +560,7 @@ requires-dist = [
     { name = "openai", specifier = ">=1.65.2" },
     { name = "opentelemetry-api", specifier = ">=1.30.0" },
     { name = "opentelemetry-exporter-otlp", specifier = ">=1.30.0" },
+    { name = "opentelemetry-instrumentation-fastapi", specifier = ">=0.51b0" },
     { name = "opentelemetry-sdk", specifier = ">=1.30.0" },
     { name = "pydantic", specifier = ">=2.10.6" },
     { name = "pylatexenc", specifier = ">=3.0a32" },
@@ -2157,6 +2168,22 @@ wheels = [
 ]
 
 [[package]]
+name = "opentelemetry-instrumentation-asgi"
+version = "0.51b0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "asgiref" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-util-http" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9e/67/8aa6e1129f641f0f3f8786e6c5d18c1f2bbe490bd4b0e91a6879e85154d2/opentelemetry_instrumentation_asgi-0.51b0.tar.gz", hash = "sha256:b3fe97c00f0bfa934371a69674981d76591c68d937b6422a5716ca21081b4148", size = 24201 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/7e/0a95ab37302729543631a789ba8e71dea75c520495739dbbbdfdc580b401/opentelemetry_instrumentation_asgi-0.51b0-py3-none-any.whl", hash = "sha256:e8072993db47303b633c6ec1bc74726ba4d32bd0c46c28dfadf99f79521a324c", size = 16340 },
+]
+
+[[package]]
 name = "opentelemetry-instrumentation-bedrock"
 version = "0.38.12"
 source = { registry = "https://pypi.org/simple" }
@@ -2215,6 +2242,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/13/3c/b4ed16d0707e25549993976566b0b3546db06ee5aadf73cdabbbac369118/opentelemetry_instrumentation_crewai-0.38.12.tar.gz", hash = "sha256:e48db70792ab635ef72859d7282af32aa1468de5ce862697b558db5be930efd9", size = 4530 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a2/ce/aaf0640140dbb899987c2caf818a0ff1cbb053e4313b8aef0980ca9714b6/opentelemetry_instrumentation_crewai-0.38.12-py3-none-any.whl", hash = "sha256:b4e16d145615065e644ca56e5f1a61f3ace78fe5ec7bee0bc1fce07a4b56ddfc", size = 6078 },
+]
+
+[[package]]
+name = "opentelemetry-instrumentation-fastapi"
+version = "0.51b0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-instrumentation-asgi" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-util-http" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2d/dc/8db4422b5084177d1ef6c7855c69bf2e9e689f595a4a9b59e60588e0d427/opentelemetry_instrumentation_fastapi-0.51b0.tar.gz", hash = "sha256:1624e70f2f4d12ceb792d8a0c331244cd6723190ccee01336273b4559bc13abc", size = 19249 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/55/1c/ec2d816b78edf2404d7b3df6d09eefb690b70bfd191b7da06f76634f1bdc/opentelemetry_instrumentation_fastapi-0.51b0-py3-none-any.whl", hash = "sha256:10513bbc11a1188adb9c1d2c520695f7a8f2b5f4de14e8162098035901cd6493", size = 12117 },
 ]
 
 [[package]]

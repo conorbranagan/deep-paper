@@ -35,6 +35,7 @@ dependencies = [
     "opentelemetry-sdk>=1.30.0",
     "opentelemetry-exporter-otlp>=1.30.0",
     "traceloop-sdk>=0.38.12",
+    "opentelemetry-instrumentation-fastapi>=0.51b0",
 ]
 
 [dependency-groups]

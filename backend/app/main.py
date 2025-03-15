@@ -1,13 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import research, indexing
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
+from app.routers import research, indexing
 from app.config import init_config
 
 
 init_config()
 
 app = FastAPI(title="Paper Research Assistant API")
+FastAPIInstrumentor.instrument_app(app)
 
 # Configure CORS
 app.add_middleware(
@@ -20,6 +23,11 @@ app.add_middleware(
 
 app.include_router(research.router, tags=["research"])
 app.include_router(indexing.router, tags=["indexing"])
+
+
+# Dependency to access current span from FastAPI routes
+def get_current_span():
+    return trace.get_current_span()
 
 
 @app.get("/")
