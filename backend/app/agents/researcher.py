@@ -10,14 +10,17 @@ from langchain_community.retrievers import BM25Retriever
 from app.models.paper import Paper, PaperNotFound
 from app.pipeline.vector_store import VectorStore, QdrantVectorStore
 from app.pipeline.embedding import Embedding
-from app.agents.dd_llmobs import SmolLLMObs, wrap_llmobs
+from app.agents.dd_llmobs import SmolLLMObs, wrap_dd_llmobs
+from app.agents.otel_llmobs import SmolTel, wrap_otel_llmobs
 from app.config import settings
 
-wrap_llmobs()
+wrap_dd_llmobs()
+wrap_otel_llmobs()
 
 log = logging.getLogger(__name__)
 
 
+@SmolTel.wrapped_tool
 @SmolLLMObs.wrapped_tool
 class PaperRetriever(Tool):
     name = "paper_retriever"
@@ -183,8 +186,9 @@ def run_research_agent(
     )
     agent = CodeAgent(
         tools=[
-            PaperChunkRetriever(vector_store),
-            CitationRetriever(),
+            # PaperChunkRetriever(vector_store),
+            # CitationRetriever(),
+            PaperRetriever(),
         ],
         model=settings.smolagents_model(model, 0.2),
         max_steps=3,

@@ -50,7 +50,8 @@ class BrowserUseWebAgent(ResearchTool):
 
     def forward(self, task: str) -> str:
         browser = Browser(config=self.browser_config)
-        llm = settings.langchain_model(self.model)
+        # llm = settings.langchain_model(self.model)
+        llm = settings.langchain_model("anthropic/claude-3-5-sonnet-latest")
 
         async def new_step_callback(
             browser_state: BrowserState, agent_output: AgentOutput, step_index: int

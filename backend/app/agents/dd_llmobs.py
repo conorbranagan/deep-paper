@@ -137,16 +137,16 @@ class SmolLLMObs:
         return cls.wrap_tool(base_class)
 
 
-_llmobs_is_wrapped = False
+_dd_llmobs_is_wrapped = False
 
 
-def wrap_llmobs():
-    global _llmobs_is_wrapped
-    if not _llmobs_is_wrapped:
+def wrap_dd_llmobs():
+    global _dd_llmobs_is_wrapped
+    if not _dd_llmobs_is_wrapped:
         SmolLLMObs.wrap_agent(CodeAgent)
         SmolLLMObs.wrap_agent(MultiStepAgent)
         SmolLLMObs.wrap_tool(FinalAnswerTool)
         SmolLLMObs.wrap_tool(UserInputTool)
         SmolLLMObs.wrap_tool(GoogleSearchTool)
         SmolLLMObs.wrap_tool(DuckDuckGoSearchTool)
-        _llmobs_is_wrapped = True
+        _dd_llmobs_is_wrapped = True
