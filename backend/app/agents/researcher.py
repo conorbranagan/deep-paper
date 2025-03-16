@@ -67,6 +67,7 @@ class PaperRetriever(Tool):
         )
 
 
+@SmolTel.wrapped_tool
 @SmolLLMObs.wrapped_tool
 class PaperChunkRetriever(Tool):
     name = "paper_chunk_retriever"
@@ -95,6 +96,7 @@ class PaperChunkRetriever(Tool):
         )
 
 
+@SmolTel.wrapped_tool
 @SmolLLMObs.wrapped_tool
 class CitationRetriever(Tool):
     name = "citation_retriever"
