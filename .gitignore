@@ -12,3 +12,4 @@ wheels/
 .ruff_cache
 .mypy_cache
 backend/app/data/qdrant/
+.DS_Store

@@ -4,7 +4,9 @@
 
 A web-based research assistant that helps users explore and analyze academic papers. The application features a modern web interface with a tab-based research system and supports multiple AI models for paper analysis.
 
-Uses:
+![home](images/home.png)
+
+### Uses:
 
 - [smolagents](https://github.com/huggingface/smolagents) for the agents
 - [QDrant](https://qdrant.tech/) as a Vector DB
