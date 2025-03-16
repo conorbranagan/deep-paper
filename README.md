@@ -4,6 +4,12 @@
 
 A web-based research assistant that helps users explore and analyze academic papers. The application features a modern web interface with a tab-based research system and supports multiple AI models for paper analysis.
 
+There are a few options:
+
+- **Single-paper Summarization**: Summarize a paper, pull out key topics for analysis and allow for open-ended questions of that paper.
+- **Explore**: As open-ended questions against a corpus of papers crawled into our vector store (see [backend/apptasks/](backend/app/tasks))
+- **Deep Research**: A OpenAI/Google deep research-style searching of the web for pages related to a given paper. Can use either text-based browsing or a web agent like [browser-use](https://github.com/browser-use/browser-use).
+
 ![home](images/home.png)
 
 ### Uses:
