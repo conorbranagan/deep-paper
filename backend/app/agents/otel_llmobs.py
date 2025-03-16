@@ -57,14 +57,10 @@ def _start_span(name: str, kind: TraceloopSpanKindValues):
 
 def _attach_parent_span(model, span: trace.Span):
     if isinstance(model, LiteLLMModel):
-        kwargs = model.kwargs
-        if "metadata" in kwargs:
-            kwargs["metadata"]["parent_otel_span"] = span
-        else:
-            kwargs["metadata"] = {"parent_otel_span": span}
-
-        # Replace the method
-        model.kwargs = kwargs
+        # FIXME: This could cause issues if kwargs is already set but
+        # when I try to use existing kwargs it pulls in extra information
+        # that causes issues.
+        model.kwargs = {"metadata": {"litellm_parent_otel_span": span}}
     else:
         log.warning("unsupported model type for SmolTel: %s", type(model))
 
@@ -167,7 +163,7 @@ class SmolTel:
             else:
                 # For non-stream we simply return that's provided.
                 agent_name = "smolagents_agent"
-                if hasattr(self, "name"):
+                if self.name:
                     agent_name = f"{self.name} (smolagents)"
 
                 with _start_span(agent_name, TraceloopSpanKindValues.AGENT) as span:
@@ -182,7 +178,7 @@ class SmolTel:
             # When it's a stream we have to wrap the generator. We pick the last
             # value to come out as our potential output and cast it to str if it's a known type.
             agent_name = "smolagents_agent"
-            if hasattr(self, "name"):
+            if self.name:
                 agent_name = f"{self.name} (smolagents)"
             with _start_span(agent_name, TraceloopSpanKindValues.AGENT) as span:
                 r_gen = original_run(self, *args, **kwargs)

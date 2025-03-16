@@ -28,8 +28,10 @@ from app.agents.deep_research.tools import (
 )
 from app.agents.deep_research.web_tools import BrowserUseWebAgent
 from app.config import settings
+from app.agents.otel_llmobs import wrap_otel_llmobs
 
 wrap_dd_llmobs()
+wrap_otel_llmobs()
 
 log = logging.getLogger(__name__)
 

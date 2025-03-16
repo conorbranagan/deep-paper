@@ -9,6 +9,7 @@ from browser_use.agent.views import AgentOutput
 
 from app.agents.deep_research.tools import ResearchTool
 from app.agents.dd_llmobs import SmolLLMObs
+from app.agents.otel_llmobs import SmolTel
 from app.agents.deep_research.message import ResearchSourceMessage
 from app.config import settings
 
@@ -23,6 +24,7 @@ def _is_valid_source(url: str) -> bool:
     return True
 
 
+@SmolTel.wrapped_tool
 @SmolLLMObs.wrapped_tool
 class BrowserUseWebAgent(ResearchTool):
     name = "web_browser"

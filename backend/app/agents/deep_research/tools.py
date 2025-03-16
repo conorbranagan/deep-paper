@@ -16,6 +16,7 @@ from app.pipeline.chunk import MaxLengthChunkingStrategy
 from app.pipeline.vector_store import VectorStore
 from app.models.paper import Paper, PaperNotFound
 from app.agents.dd_llmobs import SmolLLMObs
+from app.agents.otel_llmobs import SmolTel
 from app.agents.deep_research.message import (
     ResearchStatusMessage,
     ResearchSourceMessage,
@@ -38,6 +39,7 @@ class ResearchTool(Tool):
         raise NotImplementedError("Subclasses must implement this method")
 
 
+@SmolTel.wrapped_tool
 @SmolLLMObs.wrapped_tool
 class PaperRetriever(ResearchTool):
     name = "paper_retriever"
@@ -94,6 +96,7 @@ class PaperRetriever(ResearchTool):
         )
 
 
+@SmolTel.wrapped_tool
 @SmolLLMObs.wrapped_tool
 class VisitWebpageTool(ResearchTool):
     name = "visit_webpage"  # Keeping named so Agent is not aware this is different from just visiting the page.
@@ -184,6 +187,7 @@ class VisitWebpageTool(ResearchTool):
             return error_message
 
 
+@SmolTel.wrapped_tool
 @SmolLLMObs.wrapped_tool
 class QueryFindingsTool(Tool):
     name = "QueryFindingsTool"
@@ -212,6 +216,7 @@ class QueryFindingsTool(Tool):
         )
 
 
+@SmolTel.wrapped_tool
 @SmolLLMObs.wrapped_tool
 class GoogleSearchTool(ResearchTool):
     name = "web_search"
