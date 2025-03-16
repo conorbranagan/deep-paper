@@ -2,6 +2,12 @@ import argparse
 import sys
 from abc import ABC, abstractmethod
 from colorama import Fore, Style, init as colorama_init
+from dotenv import load_dotenv
+
+from ddtrace.llmobs import LLMObs
+from smolagents.monitoring import LogLevel
+
+
 from app.models.paper import Paper, PaperNotFound
 from app.agents.summarizer import summarize_paper, summarize_topic
 from app.agents.researcher import (
@@ -14,13 +20,11 @@ from app.pipeline.indexer import PaperIndexer
 from app.pipeline.chunk import SectionChunkingStrategy
 from app.pipeline.vector_store import QdrantVectorStore, VectorStore
 from app.pipeline.embedding import Embedding, EmbeddingConfig
-from app.config import settings, AVAILABLE_MODELS
-from ddtrace.llmobs import LLMObs
-
-from smolagents.monitoring import LogLevel
+from app.config import settings, AVAILABLE_MODELS, init_config
 
 
 colorama_init()
+load_dotenv()
 
 
 class Command(ABC):
@@ -567,6 +571,7 @@ class CLI:
     def run(self):
         """Parse arguments and execute the appropriate command."""
         args = self.parser.parse_args()
+        init_config()
 
         if args.command is None:
             self.parser.print_help()

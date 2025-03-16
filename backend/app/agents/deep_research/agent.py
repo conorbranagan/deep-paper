@@ -14,7 +14,7 @@ from browser_use import BrowserConfig
 
 from app.pipeline.vector_store import QdrantVectorStore
 from app.pipeline.embedding import Embedding
-from app.agents.dd_llmobs import wrap_llmobs
+from app.agents.dd_llmobs import wrap_dd_llmobs
 from app.agents.deep_research.message import (
     ResearchStatusMessage,
     ResearchContentMessage,
@@ -28,8 +28,10 @@ from app.agents.deep_research.tools import (
 )
 from app.agents.deep_research.web_tools import BrowserUseWebAgent
 from app.config import settings
+from app.agents.otel_llmobs import wrap_otel_llmobs
 
-wrap_llmobs()
+wrap_dd_llmobs()
+wrap_otel_llmobs()
 
 log = logging.getLogger(__name__)
 

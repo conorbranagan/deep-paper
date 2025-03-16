@@ -2,6 +2,7 @@ import logging
 import os
 import json
 
+
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from smolagents import LiteLLMModel
@@ -11,6 +12,13 @@ from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_google_vertexai import ChatVertexAI
 from google.oauth2 import service_account
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+import litellm
+
 
 load_dotenv()
 
@@ -93,10 +101,19 @@ def init_config():
         handlers=[logging.StreamHandler()],
     )
 
+    init_otel("deep-paper")
     init_dd_obs()
+
+    # https://www.traceloop.com/docs/openllmetry/getting-started-python
+    # Batch is disabled to show results immediately.
+    # Traceloop.init(disable_batch=True)
 
     # Traces go to Langsmith
     # litellm.success_callback = ["langsmith"]
+    # FIXME: We're using Otel pointed at Braintrust + Braintrust directly so there is duplicates.
+    # The native braintrust callback is formatted better so we'll leave both for now.
+    # litellm.success_callback = ["braintrust"]
+    litellm.callbacks = ["otel"]
 
 
 def init_dd_obs():
@@ -104,3 +121,12 @@ def init_dd_obs():
 
     # Traces go to Datadog
     LLMObs.enable(ml_app="deep-paper")
+
+
+def init_otel(service_name):
+    """Initialize the OpenTelemetry SDK with the environment configuration"""
+    resource = Resource.create({"service.name": service_name})
+    trace_provider = TracerProvider(resource=resource)
+    otlp_exporter = OTLPSpanExporter()
+    trace_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+    trace.set_tracer_provider(trace_provider)

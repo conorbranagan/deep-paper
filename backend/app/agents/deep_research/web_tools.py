@@ -9,6 +9,7 @@ from browser_use.agent.views import AgentOutput
 
 from app.agents.deep_research.tools import ResearchTool
 from app.agents.dd_llmobs import SmolLLMObs
+from app.agents.otel_llmobs import SmolTel
 from app.agents.deep_research.message import ResearchSourceMessage
 from app.config import settings
 
@@ -23,6 +24,7 @@ def _is_valid_source(url: str) -> bool:
     return True
 
 
+@SmolTel.wrapped_tool
 @SmolLLMObs.wrapped_tool
 class BrowserUseWebAgent(ResearchTool):
     name = "web_browser"
@@ -50,7 +52,8 @@ class BrowserUseWebAgent(ResearchTool):
 
     def forward(self, task: str) -> str:
         browser = Browser(config=self.browser_config)
-        llm = settings.langchain_model(self.model)
+        # llm = settings.langchain_model(self.model)
+        llm = settings.langchain_model("anthropic/claude-3-5-sonnet-latest")
 
         async def new_step_callback(
             browser_state: BrowserState, agent_output: AgentOutput, step_index: int

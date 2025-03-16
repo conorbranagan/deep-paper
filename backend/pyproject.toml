@@ -10,7 +10,7 @@ dependencies = [
     "langchain>=0.3.19",
     "langchain-community>=0.3.18",
     "langchain-text-splitters>=0.3.6",
-    "litellm>=1.61.20",
+    "litellm[proxy]>=1.61.20",
     "pylatexenc>=3.0a32",
     "rank-bm25>=0.2.2",
     "requests>=2.32.3",
@@ -29,6 +29,13 @@ dependencies = [
     "browser-use>=0.1.40",
     "langchain-google-vertexai>=2.0.15",
     "langchain-anthropic>=0.3.3",
+    "braintrust>=0.0.190",
+    "autoevals>=0.0.123",
+    "opentelemetry-api>=1.30.0",
+    "opentelemetry-sdk>=1.30.0",
+    "opentelemetry-exporter-otlp>=1.30.0",
+    "traceloop-sdk>=0.38.12",
+    "opentelemetry-instrumentation-fastapi>=0.51b0",
 ]
 
 [dependency-groups]
