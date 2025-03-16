@@ -187,9 +187,8 @@ def run_research_agent(
     agent = CodeAgent(
         name="researcher",
         tools=[
-            # PaperChunkRetriever(vector_store),
-            # CitationRetriever(),
-            PaperRetriever(),
+            PaperChunkRetriever(vector_store),
+            CitationRetriever(),
         ],
         model=settings.smolagents_model(model, 0.2),
         max_steps=3,
