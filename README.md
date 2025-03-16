@@ -107,37 +107,12 @@ Frontend:
 
 ### GitHub Actions
 
-The project uses three main GitHub Actions workflows:
+The project uses three main GitHub Actions workflows which run on PRs:
 
-1. **Python Static Analysis**
+1. **Python Static Analysis**: Runs `black` (formatting), `ruff` (lint) and `mypy` (type checking) against all python code.
+2. **Frontend Linting**: Runs `eslint` against all code in `frontend`.
+3. **Python Tests**: Runs `pytest` suite in `backend/app/tests`.
 
-   - Runs on push/PR to main
-   - Checks code formatting with `black`
-   - Lints with `ruff`
-   - Type checks with `mypy`
+## Deployment
 
-2. **Frontend Linting**
-
-   - Runs on push/PR to main
-   - Runs ESLint
-   - Verifies build process
-
-3. **Python Tests**
-   - Runs on push/PR to main
-   - Sets up Python 3.13
-   - Uses `uv` for dependency management
-   - Runs pytest suite
-   - Uploads test results as artifacts
-
-### Deployment
-
-The application automatically deploys to Railway when changes are merged to the main branch. No additional configuration is required for deployment.
-
-## Contributing
-
-Before submitting a PR, please ensure:
-
-1. All Python static analysis checks pass
-2. Frontend linting passes
-3. All tests pass
-4. New features include appropriate tests
+The application automatically deploys to [Railway](https://railway.com) when changes are merged to the main branch.
