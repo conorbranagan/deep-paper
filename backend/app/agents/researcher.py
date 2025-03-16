@@ -151,6 +151,7 @@ def run_paper_agent(
 ):
     paper = Paper.from_url(url)
     agent = CodeAgent(
+        name="paper_agent",
         tools=[
             PaperRetriever(),
             CitationRetriever(),

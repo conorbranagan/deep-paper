@@ -18,6 +18,7 @@ from opentelemetry import trace
 from opentelemetry.trace.status import Status, StatusCode
 from opentelemetry import context as context_api
 from opentelemetry.semconv_ai import SpanAttributes, TraceloopSpanKindValues
+from opentelemetry.instrumentation.openai import OpenAIInstrumentor
 
 log = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -216,6 +217,7 @@ _otel_is_wrapped = False
 def wrap_otel_llmobs():
     global _otel_is_wrapped
     if not _otel_is_wrapped:
+        OpenAIInstrumentor().instrument()
         SmolTel.wrap_agent(CodeAgent)
         SmolTel.wrap_agent(MultiStepAgent)
         SmolTel.wrap_tool(FinalAnswerTool)
