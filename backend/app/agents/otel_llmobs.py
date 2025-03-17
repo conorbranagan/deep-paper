@@ -23,6 +23,11 @@ from opentelemetry.instrumentation.openai import OpenAIInstrumentor
 log = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
+KNOWN_KWARGS = {
+    "temperature",
+    "vertex_credentials",
+}
+
 
 def _set_attribute(span: trace.Span, key: str, attribute: Any):
     if isinstance(attribute, ChatMessage):
@@ -61,7 +66,10 @@ def _attach_parent_span(model, span: trace.Span):
         # FIXME: This could cause issues if kwargs is already set but
         # when I try to use existing kwargs it pulls in extra information
         # that causes issues.
-        model.kwargs = {"metadata": {"litellm_parent_otel_span": span}}
+        model.kwargs = {
+            "metadata": {"litellm_parent_otel_span": span},
+            **{k: v for k, v in model.kwargs.items() if k in KNOWN_KWARGS},
+        }
     else:
         log.warning("unsupported model type for SmolTel: %s", type(model))
 
