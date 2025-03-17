@@ -80,7 +80,7 @@ export default function ExploreView({
         className={`transition-all duration-300 ${hasSearched ? "mb-8" : "mb-0"}`}
       >
         {!hasSearched && (
-          <h1 className="font-bold text-center text-4xl mb-3">Explore</h1>
+          <h1 className="font-bold text-center text-4xl mb-8">Explore</h1>
         )}
 
         <form

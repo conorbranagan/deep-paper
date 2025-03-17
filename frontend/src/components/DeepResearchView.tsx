@@ -105,7 +105,7 @@ export default function DeepResearchView({
         className={`transition-all duration-300 ${hasSearched ? "mb-8" : "mb-0"}`}
       >
         {!hasSearched && (
-          <h1 className="font-bold text-center text-4xl mb-3">
+          <h1 className="font-bold text-center text-4xl mb-8">
             Research a Paper
           </h1>
         )}
