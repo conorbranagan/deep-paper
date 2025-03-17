@@ -113,6 +113,13 @@ export default function ExploreView({
           {error && <p className="text-red-500 mt-2 text-center">{error}</p>}
         </form>
       </div>
+      {!hasSearched && (
+        <div className="mt-8">
+          <p className="text-gray-500 text-center">
+            Explore a topic across a corpus of academic papers.
+          </p>
+        </div>
+      )}
 
       {hasSearched && (
         <div className="mt-8">
