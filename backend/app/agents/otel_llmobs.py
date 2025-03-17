@@ -66,10 +66,12 @@ def _attach_parent_span(model, span: trace.Span):
         # FIXME: This could cause issues if kwargs is already set but
         # when I try to use existing kwargs it pulls in extra information
         # that causes issues.
-        model.kwargs = {
-            "metadata": {"litellm_parent_otel_span": span},
-            **{k: v for k, v in model.kwargs.items() if k in KNOWN_KWARGS},
-        }
+        base_args = (
+            {k: v for k, v in model.kwargs.items() if k in KNOWN_KWARGS}
+            if model.kwargs
+            else {}
+        )
+        model.kwargs = {"metadata": {"litellm_parent_otel_span": span}, **base_args}
     else:
         log.warning("unsupported model type for SmolTel: %s", type(model))
 

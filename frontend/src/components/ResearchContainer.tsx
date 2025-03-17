@@ -9,18 +9,47 @@ import { v4 as uuidv4 } from "uuid";
 import { modelOptions } from "./lib/modelOptions";
 import DeepResearchView from "./DeepResearchView";
 
-export default function ResearchContainer() {
+interface ResearchContainerProps {
+  initialTab?: string;
+}
+
+export default function ResearchContainer({
+  initialTab,
+}: ResearchContainerProps) {
   const [tabs, setTabs] = useState<ResearchTab[]>([]);
-  const [activeTabID, setActiveTabID] = useState<string>("explore");
+  const [activeTabID, setActiveTabID] = useState<string>(
+    initialTab || "explore"
+  );
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [selectedModel, setSelectedModel] = useState<string>(
     modelOptions[0].id
   );
 
+  const pushActiveTab = useCallback((tabId: string) => {
+    // We're using native window.history state to avoid re-mount of the component which
+    // was causing the tabs to be lost.
+    setActiveTabID(tabId);
+    if (tabId === "explore") {
+      window.history.pushState(null, "", "/explore");
+    } else if (tabId === "deep-research") {
+      window.history.pushState(null, "", "/deep-research");
+    } else {
+      window.history.pushState(null, "", `/paper/${tabId}`);
+    }
+  }, []);
+
+  const initializeDefaultTab = useCallback(() => {
+    const defaultTab: ResearchTab = {
+      id: "tab-1",
+      isLoading: false,
+    };
+    setTabs([defaultTab]);
+    pushActiveTab(defaultTab.id);
+  }, [pushActiveTab]);
+
   // Load tabs and settings from localStorage on initial render
   useEffect(() => {
     const savedTabs = localStorage.getItem("research-tabs");
-    const savedActiveTabID = localStorage.getItem("research-active-tab");
     const savedSidebarState = localStorage.getItem("research-sidebar-open");
     const savedModel = localStorage.getItem("research-selected-model");
 
@@ -36,12 +65,6 @@ export default function ResearchContainer() {
       try {
         const parsedTabs = JSON.parse(savedTabs);
         setTabs(parsedTabs);
-
-        if (savedActiveTabID) {
-          setActiveTabID(savedActiveTabID);
-        } else if (parsedTabs.length > 0) {
-          setActiveTabID(parsedTabs[0].id);
-        }
       } catch (error) {
         console.error("Error loading tabs from localStorage:", error);
         initializeDefaultTab();
@@ -49,7 +72,7 @@ export default function ResearchContainer() {
     } else {
       initializeDefaultTab();
     }
-  }, []);
+  }, [initializeDefaultTab]);
 
   // Save sidebar state to localStorage
   useEffect(() => {
@@ -102,19 +125,10 @@ export default function ResearchContainer() {
     [generateTabID]
   );
 
-  const initializeDefaultTab = () => {
-    const defaultTab: ResearchTab = {
-      id: "tab-1",
-      isLoading: false,
-    };
-    setTabs([defaultTab]);
-    setActiveTabID(defaultTab.id);
-  };
-
   const handleAddTab = () => {
     const newTabId = uuidv4();
     setTabs([...tabs, { id: newTabId, title: "", isLoading: false }]);
-    setActiveTabID(newTabId);
+    pushActiveTab(newTabId);
   };
 
   const handleDeleteTab = (tabId: string) => {
@@ -130,15 +144,12 @@ export default function ResearchContainer() {
         // Activate the previous tab, or the first tab if there is no previous tab
         const deletedTabIndex = prevTabs.findIndex((tab) => tab.id === tabId);
         const newActiveIndex = Math.max(0, deletedTabIndex - 1);
-        setActiveTabID(newTabs[newActiveIndex].id);
+        const newActiveId = newTabs[newActiveIndex].id;
+        pushActiveTab(newActiveId);
       } else if (newTabs.length === 0) {
-        // If we deleted the last tab, create a new default tab
-        const defaultTab: ResearchTab = {
-          id: "tab-1",
-          isLoading: false,
-        };
-        setActiveTabID("explore");
-        return [defaultTab];
+        // If we deleted the last tab, redirect to explore
+        pushActiveTab("deep-research");
+        return [];
       }
 
       return newTabs;
@@ -156,7 +167,6 @@ export default function ResearchContainer() {
 
   const handleTitleChange = useCallback((tabId: string, title: string) => {
     if (!title) return;
-
     setTabs((prevTabs) =>
       prevTabs.map((tab) =>
         tab.id === tabId ? { ...tab, title: title || tab.title } : tab
@@ -169,13 +179,13 @@ export default function ResearchContainer() {
       <ResearchSidebar
         activeTabID={activeTabID}
         tabs={tabs}
-        onTabClick={(tabId: string) => setActiveTabID(tabId)}
+        onTabClick={(tabId: string) => pushActiveTab(tabId)}
         onAddTab={handleAddTab}
         onDeleteTab={handleDeleteTab}
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
-        onExploreClick={() => setActiveTabID("explore")}
-        onDeepResearchClick={() => setActiveTabID("deep-research")}
+        onExploreClick={() => pushActiveTab("explore")}
+        onDeepResearchClick={() => pushActiveTab("deep-research")}
         selectedModel={selectedModel}
         onModelChange={(modelId: string) => setSelectedModel(modelId)}
       />
