@@ -41,30 +41,6 @@ export default function ExploreView({
   const [hasSearched, setHasSearched] = useState<boolean>(false);
   const [submittedQuery, setSubmittedQuery] = useState<string>("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const [cachedData, setCachedData] = useState<{
-    exploreData: string;
-    citations: Record<string, Citation>;
-  } | null>(null);
-
-  // Load state from localStorage on initial render
-  useEffect(() => {
-    try {
-      const savedState = localStorage.getItem(`explore-state`);
-      if (savedState) {
-        const parsedState = JSON.parse(savedState);
-        if (parsedState.query) {
-          setQuery(parsedState.query);
-          setCachedData({
-            exploreData: parsedState.exploreData,
-            citations: parsedState.citations,
-          });
-          setHasSearched(true);
-        }
-      }
-    } catch (error) {
-      console.error("Error loading explore state from localStorage:", error);
-    }
-  }, []);
 
   useEffect(() => {
     // Focus the input when component mounts
@@ -83,38 +59,18 @@ export default function ExploreView({
   });
   const isLoading = status === "connecting" || status === "streaming";
 
-  const exploreData = cachedData
-    ? cachedData.exploreData
-    : messages
-        .filter((msg) => msg.type === "content")
-        .map((msg) => msg.content)
-        .join("");
-  const citationsMap = cachedData
-    ? cachedData.citations
-    : messages
-        .filter((msg) => msg.type === "citation")
-        .reduce((acc: Record<string, Citation>, msg: ExploreContentMessage) => {
-          if (msg.payload) {
-            acc[msg.payload.id] = msg.payload;
-          }
-          return acc;
-        }, {});
-
-  // Save state to localStorage when we have results
-  useEffect(() => {
-    if (submittedQuery && exploreData) {
-      try {
-        const stateToSave = {
-          query: submittedQuery,
-          exploreData: exploreData,
-          citations: citationsMap,
-        };
-        localStorage.setItem(`explore-state`, JSON.stringify(stateToSave));
-      } catch (error) {
-        console.error("Error saving explore state to localStorage:", error);
+  const exploreData = messages
+    .filter((msg) => msg.type === "content")
+    .map((msg) => msg.content)
+    .join("");
+  const citationsMap = messages
+    .filter((msg) => msg.type === "citation")
+    .reduce((acc: Record<string, Citation>, msg: ExploreContentMessage) => {
+      if (msg.payload) {
+        acc[msg.payload.id] = msg.payload;
       }
-    }
-  }, [submittedQuery, exploreData, citationsMap]);
+      return acc;
+    }, {});
 
   return (
     <div
@@ -135,7 +91,6 @@ export default function ExploreView({
             }
             setHasSearched(true);
             setSubmittedQuery(query);
-            setCachedData(null);
           }}
           className="max-w-2xl mx-auto"
         >
@@ -189,7 +144,7 @@ export default function ExploreView({
                                     citation={citation}
                                     handleResearchPaper={(arxivId) =>
                                       onResearchPaper(
-                                        `https://arxiv.org/abs/${arxivId}`,
+                                        `https://arxiv.org/abs/${arxivId}`
                                       )
                                     }
                                   />
