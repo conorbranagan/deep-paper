@@ -248,15 +248,10 @@ export default function DeepResearchView({
                         href={source.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline block mb-2"
+                        className="text-xs text-blue-600 hover:underline block mb-2 truncate"
                       >
                         {source.url}
                       </a>
-                      {source.summary && (
-                        <p className="text-xs text-gray-600">
-                          {source.summary}
-                        </p>
-                      )}
                     </div>
                   ))}
                 </div>
