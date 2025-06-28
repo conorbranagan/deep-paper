@@ -1,0 +1,8 @@
+# Test Generation Rules
+#
+# This file contains instructions for how tests should be generated.
+# These rules will be passed to the AI when generating tests for your code changes.
+# 
+# Auto-Deployment Features:
+# - Branches are automatically created based on your git branch
+# - Configure logging in config.json if needed (app_logs_path or docker_compose_service_name)

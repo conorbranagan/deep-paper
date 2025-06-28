@@ -13,3 +13,8 @@ wheels/
 .mypy_cache
 backend/app/data/qdrant/
 .DS_Store
+
+# Bifrost secrets file
+.bifrost/secrets
+
+logs/

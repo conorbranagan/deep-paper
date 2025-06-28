@@ -1,0 +1,7 @@
+{
+  "app_id": "5e9eec93-010e-4e91-8a72-b57f7377da80",
+  "app_root": "backend",
+  "logging": {
+    "app_logs_path": "logs/backend.log"
+  }
+}
