@@ -1,15 +1,27 @@
 #!/bin/bash
-set -e
+
+# niteshift-setup.sh
+# Automated development environment setup for deep-paper repository
+# This script sets up the complete development environment for the Paper Research Assistant
+
+set -e  # Exit on any error
+
+echo "🚀 Starting niteshift environment setup for deep-paper..."
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Function to print colored output
 print_status() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
 print_warning() {
@@ -25,81 +37,113 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-print_status "🚀 Starting Deep Paper development environment setup..."
-
 # Check if we're in the right directory
 if [[ ! -f "README.md" ]] || [[ ! -d "backend" ]] || [[ ! -d "frontend" ]]; then
     print_error "Please run this script from the root of the deep-paper repository"
     exit 1
 fi
 
-# Check for required tools
-print_status "Checking for required tools..."
+print_status "Repository root confirmed"
 
-if ! command_exists docker; then
-    print_error "Docker is required but not installed. Please install Docker first."
+# Check prerequisites
+print_status "Checking prerequisites..."
+
+# Check for Python 3.12+
+if command_exists python3; then
+    PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    print_status "Found Python $PYTHON_VERSION"
+    if ! python3 -c 'import sys; exit(0 if sys.version_info >= (3, 12) else 1)'; then
+        print_warning "Python 3.12+ recommended, found $PYTHON_VERSION"
+    fi
+else
+    print_error "Python 3 is required but not found"
     exit 1
 fi
 
-if ! command_exists docker-compose; then
-    print_error "Docker Compose is required but not installed. Please install Docker Compose first."
+# Check for Node.js 18+
+if command_exists node; then
+    NODE_VERSION=$(node --version | cut -d'v' -f2)
+    print_status "Found Node.js $NODE_VERSION"
+    if ! node -e 'process.exit(parseInt(process.version.slice(1)) >= 18 ? 0 : 1)'; then
+        print_warning "Node.js 18+ recommended, found $NODE_VERSION"
+    fi
+else
+    print_error "Node.js is required but not found"
     exit 1
 fi
 
-if ! command_exists node; then
-    print_error "Node.js is required but not installed. Please install Node.js 18+ first."
-    exit 1
-fi
-
+# Check for npm
 if ! command_exists npm; then
-    print_error "npm is required but not installed. Please install npm first."
+    print_error "npm is required but not found"
     exit 1
 fi
 
-# Check for uv, install if not present
+# Check for Docker and Docker Compose
+if ! command_exists docker; then
+    print_error "Docker is required but not found"
+    exit 1
+fi
+
+if ! command_exists docker-compose && ! docker compose version >/dev/null 2>&1; then
+    print_error "Docker Compose is required but not found"
+    exit 1
+fi
+
+print_success "All prerequisites found"
+
+# Install uv if not present
 if ! command_exists uv; then
-    print_warning "uv not found. Installing uv for Python dependency management..."
+    print_status "Installing uv Python package manager..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
     export PATH="$HOME/.cargo/bin:$PATH"
-    
     if ! command_exists uv; then
-        print_error "Failed to install uv. Please install manually: https://github.com/astral-sh/uv"
+        print_error "Failed to install uv"
         exit 1
     fi
+    print_success "uv installed successfully"
+else
+    print_status "uv is already installed"
 fi
 
-print_status "✅ All required tools are available"
+# Start services with Docker Compose
+print_status "Starting required services (Redis, Qdrant)..."
 
-# Start services
-print_status "🐳 Starting Docker services (Redis and Qdrant)..."
 cd backend
+
+# Stop any existing containers
+docker-compose down >/dev/null 2>&1 || true
+
+# Start services in background
 docker-compose up -d
 
 # Wait for services to be healthy
-print_status "⏳ Waiting for services to be ready..."
-sleep 10
+print_status "Waiting for services to be ready..."
+sleep 5
 
-# Check Redis
-if docker-compose exec -T redis redis-cli ping | grep -q PONG; then
-    print_status "✅ Redis is ready"
+# Check if Redis is ready
+if docker-compose exec -T redis redis-cli ping >/dev/null 2>&1; then
+    print_success "Redis is ready"
 else
     print_warning "Redis may not be fully ready yet"
 fi
 
-# Check Qdrant
+# Check if Qdrant is ready
 if curl -f http://localhost:6333/healthz >/dev/null 2>&1; then
-    print_status "✅ Qdrant is ready"
+    print_success "Qdrant is ready"
 else
     print_warning "Qdrant may not be fully ready yet"
 fi
 
-# Setup Python backend
-print_status "🐍 Setting up Python backend..."
+# Backend setup
+print_status "Setting up backend environment..."
 
 # Create virtual environment if it doesn't exist
-if [[ ! -d ".venv" ]]; then
+if [ ! -d ".venv" ]; then
     print_status "Creating Python virtual environment..."
     uv venv
+    print_success "Virtual environment created"
+else
+    print_status "Virtual environment already exists"
 fi
 
 # Activate virtual environment and install dependencies
@@ -107,102 +151,77 @@ print_status "Installing Python dependencies..."
 source .venv/bin/activate
 uv pip install -e .
 uv pip install -e ".[dev]"
+print_success "Python dependencies installed"
 
-print_status "✅ Backend dependencies installed"
-
-# Setup frontend
-print_status "⚛️  Setting up frontend..."
-cd ../frontend
-
-if [[ -f "package-lock.json" ]]; then
-    print_status "Running npm ci for faster, reliable installs..."
-    npm ci
+# Create .env file if it doesn't exist
+if [ ! -f ".env" ]; then
+    print_status "Creating .env file from template..."
+    cp .env.example .env
+    print_warning "Please configure API keys in backend/.env before running the application"
 else
-    print_status "Running npm install..."
-    npm install
+    print_status ".env file already exists"
 fi
 
-print_status "✅ Frontend dependencies installed"
-
-# Go back to root
 cd ..
 
-# Check for .env file
-print_status "🔧 Checking environment configuration..."
-if [[ ! -f "backend/.env" ]]; then
-    if [[ -f "backend/.env.example" ]]; then
-        print_warning "No .env file found. Copying .env.example to .env"
-        cp backend/.env.example backend/.env
-        print_warning "Please edit backend/.env with your API keys before running the application"
-    else
-        print_warning "No .env or .env.example file found. You may need to create backend/.env with required API keys"
-    fi
-else
-    print_status "✅ Environment file exists"
-fi
+# Frontend setup
+print_status "Setting up frontend environment..."
 
-# Create start script for convenience
-print_status "📝 Creating convenience scripts..."
+cd frontend
 
-cat > start-dev.sh << 'EOF'
-#!/bin/bash
-# Convenience script to start all development services
+# Install frontend dependencies
+print_status "Installing frontend dependencies..."
+npm install
+print_success "Frontend dependencies installed"
 
-# Colors
-GREEN='\033[0;32m'
-NC='\033[0m'
+cd ..
 
-echo -e "${GREEN}Starting development environment...${NC}"
+# Final setup verification
+print_status "Verifying setup..."
 
-# Start backend in background
+# Check backend can start (dry run)
 cd backend
 source .venv/bin/activate
-fastapi dev main.py &
-BACKEND_PID=$!
+if python -c "import app.main" >/dev/null 2>&1; then
+    print_success "Backend imports successfully"
+else
+    print_warning "Backend may have import issues - check your .env configuration"
+fi
+cd ..
 
-# Start frontend in background  
-cd ../frontend
-npm run dev &
-FRONTEND_PID=$!
+# Check frontend build
+cd frontend
+if npm run build >/dev/null 2>&1; then
+    print_success "Frontend builds successfully"
+    # Clean up build files
+    rm -rf .next
+else
+    print_warning "Frontend build issues detected"
+fi
+cd ..
 
-echo -e "${GREEN}✅ Services started!${NC}"
-echo "Backend: http://localhost:8000"
-echo "Frontend: http://localhost:3000"
-echo "Redis: localhost:6379"
-echo "Qdrant: http://localhost:6333"
+print_success "🎉 Niteshift environment setup complete!"
 echo ""
-echo "Press Ctrl+C to stop all services"
-
-# Wait for interrupt
-trap "kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit" INT
-wait
-EOF
-
-chmod +x start-dev.sh
-
-print_status "🎉 Setup complete!"
+echo "Next steps:"
+echo "1. Configure API keys in backend/.env"
+echo "2. Start the backend: cd backend && source .venv/bin/activate && fastapi dev main.py"
+echo "3. Start the frontend: cd frontend && npm run dev"
 echo ""
-echo "📋 Next steps:"
-echo "1. Edit backend/.env with your API keys (if not already done)"
-echo "2. Run ./start-dev.sh to start all development services"
-echo "   OR start services individually:"
-echo "   - Backend: cd backend && source .venv/bin/activate && fastapi dev main.py"
-echo "   - Frontend: cd frontend && npm run dev"
+echo "Services running:"
+echo "- Redis: http://localhost:6379"
+echo "- Qdrant: http://localhost:6333"
+echo "- Backend (when started): http://localhost:8000"
+echo "- Frontend (when started): http://localhost:3000"
 echo ""
-echo "🌐 URLs:"
-echo "- Frontend: http://localhost:3000"
-echo "- Backend API: http://localhost:8000"
-echo "- API Docs: http://localhost:8000/docs"
-echo "- Qdrant UI: http://localhost:6333/dashboard"
-echo ""
-echo "🔧 Development commands:"
+echo "Development commands:"
 echo "Backend:"
-echo "  - Format: cd backend && black ."
-echo "  - Lint: cd backend && ruff check"
-echo "  - Type check: cd backend && mypy"
-echo "  - Test: cd backend && pytest"
+echo "  - Format: black ."
+echo "  - Lint: ruff check"
+echo "  - Type check: mypy"
+echo "  - Test: pytest"
 echo ""
-echo "Frontend:"  
-echo "  - Lint: cd frontend && npm run lint"
-echo "  - Format: cd frontend && npm run format"
-echo "  - Build: cd frontend && npm run build"
+echo "Frontend:"
+echo "  - Lint: npm run lint"
+echo "  - Format: npm run format"
+echo ""
+echo "To stop services: cd backend && docker-compose down"
