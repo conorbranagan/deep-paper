@@ -1,47 +1,47 @@
-# Paper Research Assistant
+# Asistente de Investigación de Papers
 
-## Overview
+## Descripción General
 
-A web-based research assistant that helps users explore and analyze academic papers. The application features a modern web interface with a tab-based research system and supports multiple AI models for paper analysis.
+Un asistente de investigación basado en web que ayuda a los usuarios a explorar y analizar papers académicos. La aplicación presenta una interfaz web moderna con un sistema de investigación basado en pestañas y soporta múltiples modelos de IA para el análisis de papers.
 
-There are a few options:
+Hay algunas opciones:
 
-- **Single-paper Summarization**: Summarize a paper, pull out key topics for analysis and allow for open-ended questions of that paper.
-- **Explore**: As open-ended questions against a corpus of papers crawled into our vector store (see [backend/apptasks/](backend/app/tasks))
-- **Deep Research**: A OpenAI/Google deep research-style searching of the web for pages related to a given paper. Can use either text-based browsing or a web agent like [browser-use](https://github.com/browser-use/browser-use).
+- **Resumen de Paper Individual**: Resume un paper, extrae temas clave para análisis y permite preguntas abiertas sobre ese paper.
+- **Explorar**: Realiza preguntas abiertas contra un corpus de papers indexados en nuestro almacén vectorial (ver [backend/apptasks/](backend/app/tasks))
+- **Investigación Profunda**: Una búsqueda web estilo OpenAI/Google deep research de páginas relacionadas con un paper dado. Puede usar navegación basada en texto o un agente web como [browser-use](https://github.com/browser-use/browser-use).
 
 ![home](images/home.png)
 
-### Uses:
+### Utiliza:
 
-- [smolagents](https://github.com/huggingface/smolagents) for the agents
-- [QDrant](https://qdrant.tech/) as a Vector DB
-- [LiteLLM](https://www.litellm.ai/) for interacting with AI providers
-- [Railway](https://railway.com/) for deployments
-- [FastAPI](https://fastapi.tiangolo.com/) and [Next.JS](https://nextjs.org/)
+- [smolagents](https://github.com/huggingface/smolagents) para los agentes
+- [QDrant](https://qdrant.tech/) como Base de Datos Vectorial
+- [LiteLLM](https://www.litellm.ai/) para interactuar con proveedores de IA
+- [Railway](https://railway.com/) para despliegues
+- [FastAPI](https://fastapi.tiangolo.com/) y [Next.JS](https://nextjs.org/)
 
-### Key Features
+### Características Principales
 
-- Interactive research interface with multiple tabs
-- Paper exploration and deep research capabilities
-- Support for multiple AI models
-- Persistent storage of research sessions
-- Real-time paper analysis
+- Interfaz de investigación interactiva con múltiples pestañas
+- Capacidades de exploración de papers e investigación profunda
+- Soporte para múltiples modelos de IA
+- Almacenamiento persistente de sesiones de investigación
+- Análisis de papers en tiempo real
 
-## Development Setup
+## Configuración de Desarrollo
 
-### Prerequisites
+### Prerrequisitos
 
 - Python 3.13+
 - Node.js 18+
-- [uv](https://github.com/astral/uv) for Python dependency management
-- Various API keys for AI services
+- [uv](https://github.com/astral/uv) para gestión de dependencias de Python
+- Varias claves API para servicios de IA
 
-### Backend Setup
+### Configuración del Backend
 
-1. Clone the repository
-2. Navigate to the backend directory
-3. Set up the environment with uv:
+1. Clona el repositorio
+2. Navega al directorio backend
+3. Configura el entorno con uv:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -49,70 +49,70 @@ uv venv
 source .venv/bin/activate
 ```
 
-4. Install dependencies:
+4. Instala las dependencias:
 
 ```bash
 uv pip install -e .
 ```
 
-5. Copy `.env.example` to `.env` and configure the keys.
+5. Copia `.env.example` a `.env` y configura las claves.
 
-6. Start the backend server:
+6. Inicia el servidor backend:
 
 ```bash
 fastapi dev main.py
 ```
 
-### Frontend Setup
+### Configuración del Frontend
 
-1. Navigate to the frontend directory
-2. Install dependencies:
+1. Navega al directorio frontend
+2. Instala las dependencias:
 
 ```bash
 npm install
 ```
 
-3. Start the development server:
+3. Inicia el servidor de desarrollo:
 
 ```bash
 npm run dev
 ```
 
-The frontend is built with:
+El frontend está construido con:
 
 - Next.js 15.2.0
 - React 19
 - TailwindCSS
 - TypeScript
 
-## Development Commands
+## Comandos de Desarrollo
 
 Backend:
 
-- Install dev dependencies: `uv pip install -e ".[dev]"`
-- Format code: `black .`
+- Instalar dependencias de desarrollo: `uv pip install -e ".[dev]"`
+- Formatear código: `black .`
 - Lint: `ruff check`
-- Type checking: `mypy`
-- Run tests: `pytest`
+- Verificación de tipos: `mypy`
+- Ejecutar pruebas: `pytest`
 
 Frontend:
 
-- Development server: `npm run dev`
-- Build: `npm run build`
-- Start production server: `npm run start`
+- Servidor de desarrollo: `npm run dev`
+- Construir: `npm run build`
+- Iniciar servidor de producción: `npm run start`
 - Lint: `npm run lint`
-- Format code: `npm run format`
+- Formatear código: `npm run format`
 
 ## CI/CD
 
 ### GitHub Actions
 
-The project uses three main GitHub Actions workflows which run on PRs:
+El proyecto utiliza tres flujos de trabajo principales de GitHub Actions que se ejecutan en los PRs:
 
-1. **Python Static Analysis**: Runs `black` (formatting), `ruff` (lint) and `mypy` (type checking) against all python code.
-2. **Frontend Linting**: Runs `eslint` against all code in `frontend`.
-3. **Python Tests**: Runs `pytest` suite in `backend/app/tests`.
+1. **Análisis Estático de Python**: Ejecuta `black` (formateo), `ruff` (lint) y `mypy` (verificación de tipos) contra todo el código Python.
+2. **Linting del Frontend**: Ejecuta `eslint` contra todo el código en `frontend`.
+3. **Pruebas de Python**: Ejecuta el conjunto de pruebas `pytest` en `backend/app/tests`.
 
-## Deployment
+## Despliegue
 
-The application automatically deploys to [Railway](https://railway.com) when changes are merged to the main branch.
+La aplicación se despliega automáticamente en [Railway](https://railway.com) cuando los cambios se fusionan con la rama principal.
